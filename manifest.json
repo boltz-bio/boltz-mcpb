@@ -1,0 +1,135 @@
+{
+  "manifest_version": "0.3",
+  "name": "boltz-mcpb",
+  "display_name": "Boltz",
+  "version": "0.1.0",
+  "description": "Run Boltz biomolecular modeling workflows from Claude Desktop through the local boltz-api CLI.",
+  "long_description": "Boltz wraps the local boltz-api CLI for structure prediction, molecular screening, binder design, result recovery, setup, and authentication. Workflow tools follow the same estimate-cost, start, and download-results flow as the Boltz Claude Code and Codex skill plugins.",
+  "author": {
+    "name": "Boltz",
+    "email": "support@boltz.bio",
+    "url": "https://boltz.bio"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boltz-bio/boltz-mcpb"
+  },
+  "homepage": "https://boltz.bio",
+  "documentation": "https://docs.boltz.bio",
+  "support": "https://github.com/boltz-bio/boltz-compute-skills/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "BOLTZ_MCPB_CLI_PATH": "${user_config.boltz_api_path}",
+        "BOLTZ_MCPB_OUTPUT_ROOT": "${user_config.output_root}",
+        "BOLTZ_MCPB_API_KEY": "${user_config.api_key}",
+        "BOLTZ_MCPB_DEFAULT_POLL_INTERVAL_SECONDS": "${user_config.default_poll_interval_seconds}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "boltz_check_setup",
+      "description": "Check boltz-api availability, version, auth status, and output directory configuration."
+    },
+    {
+      "name": "boltz_install_cli",
+      "description": "Install or update boltz-api using the official Boltz installer as an explicit setup action."
+    },
+    {
+      "name": "boltz_auth_login",
+      "description": "Start boltz-api device-code authentication and return the login instructions from the CLI."
+    },
+    {
+      "name": "boltz_structure_and_binding",
+      "description": "Estimate and optionally start one Boltz structure-and-binding job, then optionally launch result download."
+    },
+    {
+      "name": "boltz_small_molecule_screen",
+      "description": "Estimate and optionally start one small-molecule library screen, then optionally launch result download."
+    },
+    {
+      "name": "boltz_small_molecule_design",
+      "description": "Estimate and optionally start one small-molecule design job, then optionally launch result download."
+    },
+    {
+      "name": "boltz_protein_screen",
+      "description": "Estimate and optionally start one protein-family screen, then optionally launch result download."
+    },
+    {
+      "name": "boltz_protein_design",
+      "description": "Estimate and optionally start one protein design job, then optionally launch result download."
+    },
+    {
+      "name": "boltz_download_results",
+      "description": "Start or resume boltz-api download-results for an existing job/run name."
+    },
+    {
+      "name": "boltz_job_status",
+      "description": "Inspect local download-status, retrieve remote job status, or read a running downloader tail."
+    }
+  ],
+  "keywords": [
+    "boltz",
+    "boltz-compute",
+    "computational-biology",
+    "protein-design",
+    "virtual-screening",
+    "structure-prediction",
+    "molecular-modeling",
+    "drug-discovery"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://boltz.bio/privacy"
+  ],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "boltz_api_path": {
+      "type": "string",
+      "title": "boltz-api executable",
+      "description": "Path or command name for the Boltz CLI. Leave blank to use \"boltz-api\" from PATH.",
+      "default": "boltz-api",
+      "required": false
+    },
+    "output_root": {
+      "type": "directory",
+      "title": "Boltz output directory",
+      "description": "Directory where downloaded Boltz run artifacts are stored. Leave blank to use ~/boltz-experiments.",
+      "default": "${HOME}/boltz-experiments",
+      "required": false
+    },
+    "api_key": {
+      "type": "string",
+      "title": "Boltz API key",
+      "description": "Optional API key fallback. Leave blank to use boltz-api device-code authentication.",
+      "sensitive": true,
+      "required": false
+    },
+    "default_poll_interval_seconds": {
+      "type": "number",
+      "title": "Default download poll interval",
+      "description": "Seconds between download-results status checks when a workflow does not specify one.",
+      "default": 30,
+      "min": 5,
+      "max": 300,
+      "required": false
+    }
+  }
+}

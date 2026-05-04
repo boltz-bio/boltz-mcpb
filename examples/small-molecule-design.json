@@ -1,0 +1,23 @@
+{
+  "tool": "boltz_small_molecule_design",
+  "arguments": {
+    "run_name": "example-sm-design-v1",
+    "payload": {
+      "num_molecules": 10,
+      "target": {
+        "entities": [
+          {
+            "type": "protein",
+            "chain_ids": ["A"],
+            "value": "MKTAYIAKQRQISFVKSHFSRQ"
+          }
+        ],
+        "reference_ligands": ["CCO"]
+      },
+      "chemical_space": "enamine_real",
+      "molecule_filters": {
+        "boltz_smarts_catalog_filter_level": "recommended"
+      }
+    }
+  }
+}

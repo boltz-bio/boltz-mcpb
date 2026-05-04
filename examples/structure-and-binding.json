@@ -1,0 +1,25 @@
+{
+  "tool": "boltz_structure_and_binding",
+  "arguments": {
+    "run_name": "example-structure-binding-v1",
+    "payload": {
+      "entities": [
+        {
+          "type": "protein",
+          "chain_ids": ["A"],
+          "value": "MKTAYIAKQRQISFVKSHFSRQ"
+        },
+        {
+          "type": "ligand_smiles",
+          "chain_ids": ["B"],
+          "value": "CCO"
+        }
+      ],
+      "binding": {
+        "type": "ligand_protein_binding",
+        "binder_chain_id": "B"
+      },
+      "num_samples": 1
+    }
+  }
+}

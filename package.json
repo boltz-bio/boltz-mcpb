@@ -1,0 +1,17 @@
+{
+  "name": "boltz-mcpb",
+  "version": "0.1.0",
+  "description": "Claude Desktop MCPB server for Boltz CLI workflows.",
+  "type": "module",
+  "private": true,
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test",
+    "pack:mcpb": "npx --yes @anthropic-ai/mcpb@2.1.2 pack"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "zod": "^3.25.76"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "tool": "boltz_protein_design",
+  "arguments": {
+    "run_name": "example-protein-design-v1",
+    "payload": {
+      "num_proteins": 10,
+      "target": {
+        "type": "no_template",
+        "entities": [
+          {
+            "type": "protein",
+            "chain_ids": ["A"],
+            "value": "MKTAYIAKQRQISFVKSHFSRQ"
+          }
+        ]
+      },
+      "binder_specification": {
+        "type": "no_template",
+        "modality": "peptide",
+        "entities": [
+          {
+            "type": "designed_protein",
+            "chain_ids": ["B"],
+            "value": "10..20"
+          }
+        ]
+      }
+    }
+  }
+}
