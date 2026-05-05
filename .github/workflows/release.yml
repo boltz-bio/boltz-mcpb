@@ -1,0 +1,89 @@
+name: Release
+
+# Build the .mcpb bundle and publish a GitHub Release on every push to main
+# whose manifest.json version differs from the latest release. Also runnable
+# on demand via workflow_dispatch.
+#
+# Idempotent: if a release already exists for the current manifest version,
+# the workflow is a no-op.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manifest.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'server/**'
+      - 'icon.png'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read manifest version
+        id: ver
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version manifest.json)
+          name=$(jq -r .name manifest.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "asset=${name}-${version}.mcpb" >> "$GITHUB_OUTPUT"
+          echo "Building $name v$version"
+
+      - name: Skip if release already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.ver.outputs.tag }} already exists — skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.existing.outputs.skip != 'true'
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install production dependencies
+        if: steps.existing.outputs.skip != 'true'
+        run: npm ci --omit=dev
+
+      - name: Validate manifest
+        if: steps.existing.outputs.skip != 'true'
+        run: npx --yes @anthropic-ai/mcpb@2.1.2 validate manifest.json
+
+      - name: Pack .mcpb
+        if: steps.existing.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          npx --yes @anthropic-ai/mcpb@2.1.2 pack . "dist/${{ steps.ver.outputs.asset }}"
+          ls -lh dist/
+
+      - name: Publish release
+        if: steps.existing.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.name }} ${{ steps.ver.outputs.tag }}
+          body: |
+            Boltz MCPB Desktop Extension `${{ steps.ver.outputs.tag }}`.
+
+            Download `${{ steps.ver.outputs.asset }}` below and install in Claude Desktop:
+            **Settings → Extensions → Advanced settings → Install Extension**.
+          files: dist/${{ steps.ver.outputs.asset }}
+          fail_on_unmatched_files: true
