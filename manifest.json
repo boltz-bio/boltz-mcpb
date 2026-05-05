@@ -2,21 +2,21 @@
   "manifest_version": "0.3",
   "name": "boltz",
   "display_name": "Boltz",
-  "version": "0.2.1",
-  "description": "MCP server that enables interaction with Boltz protein structure prediction, molecular screening, and binder design APIs.",
-  "long_description": "Official Boltz Model Context Protocol (MCP) server that enables interaction with state-of-the-art biomolecular modeling APIs. This server allows MCP clients like Claude Desktop to predict protein structures and ligand binding, screen small-molecule and protein libraries against a target, design novel small molecules and protein binders, and recover results from prior runs — all from a natural-language conversation.",
+  "version": "0.2.2",
+  "description": "Predict molecular structures and binding interactions, screen libraries, and design binders with the Boltz API.",
+  "long_description": "The official Model Context Protocol (MCP) server for the Boltz API. Predict molecular structures and binding interactions, screen small-molecule and protein libraries against a target, and design small molecules and protein binders — all from chat. Each workflow estimates cost before running, then downloads structured results to your workspace when the job completes.",
   "author": {
     "name": "Boltz",
     "email": "support@boltz.bio",
-    "url": "https://boltz.bio"
+    "url": "https://github.com/boltz-bio"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/boltz-bio/boltz-mcpb"
   },
   "homepage": "https://boltz.bio",
-  "documentation": "https://docs.boltz.bio",
-  "support": "https://github.com/boltz-bio/boltz-compute-skills/issues",
+  "documentation": "https://api.boltz.bio/docs",
+  "support": "https://github.com/boltz-bio/boltz-mcpb/issues",
   "icon": "icon.png",
   "server": {
     "type": "node",
