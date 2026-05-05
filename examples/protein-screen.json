@@ -1,0 +1,30 @@
+{
+  "tool": "boltz_protein_screen",
+  "arguments": {
+    "run_name": "example-protein-screen-v1",
+    "payload": {
+      "proteins": [
+        {
+          "id": "candidate-1",
+          "entities": [
+            {
+              "type": "protein",
+              "chain_ids": ["B"],
+              "value": "EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYAMS"
+            }
+          ]
+        }
+      ],
+      "target": {
+        "type": "no_template",
+        "entities": [
+          {
+            "type": "protein",
+            "chain_ids": ["A"],
+            "value": "MKTAYIAKQRQISFVKSHFSRQ"
+          }
+        ]
+      }
+    }
+  }
+}
