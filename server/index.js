@@ -1,11 +1,15 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { formatResult, toolDefinitions } from "./tools.js";
 
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
+
 const server = new McpServer({
   name: "boltz-mcpb",
-  version: "0.1.0"
+  version
 });
 
 for (const tool of toolDefinitions) {

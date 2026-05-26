@@ -11,8 +11,13 @@ import {
   buildWorkflowCommands,
   defaultCliCandidates,
   downloadResults,
+  formatPathForResponse,
   resolvePollInterval,
   resolveCliPath,
+  resolveOutputRoot,
+  resolveWorkingDirectory,
+  runWorkflow,
+  writePayloadFile,
   workflowSpecs
 } from "../server/boltz.js";
 import { toolDefinitions } from "../server/tools.js";
@@ -96,6 +101,30 @@ test("download command uses resume-friendly run name and root", () => {
   ]);
 });
 
+test("user supplied paths must stay inside configured output root", async () => {
+  const outputRoot = await mkdtemp(path.join(tmpdir(), "boltz-output-root-"));
+  const config = {
+    cliPath: "/definitely/missing/boltz-api",
+    outputRoot,
+    defaultPollIntervalSeconds: 30,
+    apiKey: ""
+  };
+
+  assert.equal(resolveOutputRoot({ output_root: "screen-v1" }, config), path.join(outputRoot, "screen-v1"));
+  assert.equal(resolveOutputRoot({ output_root: path.join(outputRoot, "screen-v2") }, config), path.join(outputRoot, "screen-v2"));
+  assert.equal(resolveWorkingDirectory({ working_directory: "." }, config), outputRoot);
+  assert.equal(formatPathForResponse(path.join(outputRoot, "nested", "result.json"), config), "nested/result.json");
+
+  assert.throws(() => resolveOutputRoot({ output_root: path.join(outputRoot, "..", "escape") }, config), /output_root/);
+  assert.throws(() => resolveWorkingDirectory({ working_directory: ".." }, config), /working_directory/);
+  await assert.rejects(() => downloadResults({
+    id: "job_123",
+    run_name: "escape-v1",
+    output_root: "..",
+    poll_interval_seconds: 30
+  }, config), /output_root/);
+});
+
 test("poll interval precedence is explicit arg, user default, workflow default", () => {
   const spec = workflowSpecs.boltz_structure_and_binding;
   assert.equal(resolvePollInterval({ poll_interval_seconds: 45 }, spec, { defaultPollIntervalSeconds: 17 }), 45);
@@ -152,6 +181,37 @@ test("download result startup reports immediate spawn errors", async () => {
   });
   assert.equal(result.status, "error");
   assert.match(result.error, /ENOENT|spawn/);
+});
+
+test("workflow responses expose workspace-relative paths", async () => {
+  const outputRoot = await mkdtemp(path.join(tmpdir(), "boltz-output-root-"));
+  const result = await runWorkflow("boltz_protein_design", {
+    run_name: "relative-paths-v1",
+    payload: { protein: { sequence: "ACDE" } },
+    timeout_ms: 1000
+  }, {
+    cliPath: process.execPath,
+    outputRoot,
+    defaultPollIntervalSeconds: 30,
+    apiKey: ""
+  });
+
+  assert.equal(path.isAbsolute(result.payload_path), false);
+  assert.match(result.payload_path, /^\.boltz-mcpb\/payloads\/payload-/);
+  assert.equal(result.output_root, ".");
+  assert.equal(result.estimate.args.includes(outputRoot), false);
+  assert.match(result.estimate.args[result.estimate.args.indexOf("--input") + 1], /^@json:payload-/);
+});
+
+test("payload write errors include local context", async () => {
+  const outputRoot = await mkdtemp(path.join(tmpdir(), "boltz-output-root-"));
+  const fileAsRoot = path.join(outputRoot, "not-a-directory");
+  await writeFile(fileAsRoot, "");
+
+  await assert.rejects(
+    () => writePayloadFile({ ok: true }, undefined, fileAsRoot),
+    /Could not write Boltz payload file/
+  );
 });
 
 test("input refs use file-url style json references", () => {

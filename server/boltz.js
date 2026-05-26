@@ -36,9 +36,10 @@ export const workflowSpecs = {
 const downloaderProcesses = new Map();
 
 export function getConfig(env = process.env) {
+  const outputRoot = path.resolve(env.BOLTZ_MCPB_OUTPUT_ROOT || path.join(env.HOME || process.cwd(), "boltz-experiments"));
   return {
     cliPath: resolveCliPath(env),
-    outputRoot: env.BOLTZ_MCPB_OUTPUT_ROOT || path.join(env.HOME || process.cwd(), "boltz-experiments"),
+    outputRoot,
     defaultPollIntervalSeconds: env.BOLTZ_MCPB_DEFAULT_POLL_INTERVAL_SECONDS
       ? parseNumber(env.BOLTZ_MCPB_DEFAULT_POLL_INTERVAL_SECONDS, 30)
       : undefined,
@@ -81,6 +82,57 @@ function findOnPath(executableName, pathValue) {
 function parseNumber(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function resolveSafePath(baseDirectory, candidatePath, label) {
+  const base = path.resolve(baseDirectory);
+  const resolved = path.resolve(base, candidatePath);
+  if (!isPathInside(resolved, base)) {
+    throw new Error(`${label} must resolve inside the configured Boltz output root.`);
+  }
+  return resolved;
+}
+
+function isPathInside(candidatePath, baseDirectory) {
+  const relative = path.relative(baseDirectory, candidatePath);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+export function resolveOutputRoot(args = {}, config = getConfig()) {
+  return resolveSafePath(config.outputRoot, args.output_root || config.outputRoot, "output_root");
+}
+
+export function resolveWorkingDirectory(args = {}, config = getConfig()) {
+  if (!args.working_directory) return process.cwd();
+  return resolveSafePath(config.outputRoot, args.working_directory, "working_directory");
+}
+
+export function formatPathForResponse(filePath, config = getConfig()) {
+  const resolved = path.resolve(filePath);
+  const base = path.resolve(config.outputRoot);
+  if (!isPathInside(resolved, base)) return path.basename(resolved);
+  const relative = path.relative(base, resolved) || ".";
+  return relative.split(path.sep).join("/");
+}
+
+function sanitizeCommandResult(result, config) {
+  if (!result || !Array.isArray(result.args)) return result;
+  return { ...result, args: sanitizeCommandArgs(result.args, config) };
+}
+
+function sanitizeCommandArgs(args, config) {
+  return args.map((arg, index) => {
+    if (index > 0 && args[index - 1] === "--root-dir") {
+      return formatPathForResponse(arg, config);
+    }
+    if (typeof arg === "string" && arg.startsWith("@json:")) {
+      return `@json:${path.basename(arg)}`;
+    }
+    if (typeof arg === "string" && path.isAbsolute(arg)) {
+      return formatPathForResponse(arg, config);
+    }
+    return arg;
+  });
 }
 
 export function buildWorkflowCommands(spec, args, config) {
@@ -184,30 +236,43 @@ export async function runCommand(cliPath, args, options = {}) {
   });
 }
 
-export async function writePayloadFile(payload, payloadText, workingDirectory = process.cwd()) {
-  const root = path.join(tmpdir(), "boltz-mcpb");
-  await mkdir(root, { recursive: true });
+export async function writePayloadFile(payload, payloadText, workspaceRoot = process.cwd()) {
+  const root = path.join(path.resolve(workspaceRoot), ".boltz-mcpb", "payloads");
   const file = path.join(root, `payload-${Date.now()}-${Math.random().toString(16).slice(2)}.json`);
-  const body = payloadText ?? JSON.stringify(payload, null, 2);
-  await writeFile(file, body, "utf8");
-  return path.resolve(workingDirectory, file);
+  let body;
+  try {
+    body = payloadText ?? JSON.stringify(payload, null, 2);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not serialize Boltz payload: ${message}`);
+  }
+
+  try {
+    await mkdir(root, { recursive: true });
+    await writeFile(file, body, "utf8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not write Boltz payload file: ${message}`);
+  }
+  return file;
 }
 
 export async function checkSetup(args = {}, config = getConfig()) {
   const cliPath = config.cliPath;
+  const outputRoot = resolveOutputRoot(args, config);
   const version = await runCommand(cliPath, ["--version"], { timeoutMs: 30000, apiKey: config.apiKey });
   const auth = version.ok
     ? await runCommand(cliPath, ["auth", "status"], { timeoutMs: 30000, apiKey: config.apiKey })
     : { ok: false, stdout: "", stderr: "Skipped auth status because boltz-api is not available." };
   return {
-    cli_path: cliPath,
+    cli_path: path.basename(cliPath),
     cli_available: version.ok,
     version_stdout: version.stdout,
     version_stderr: version.stderr,
     auth_ok: auth.ok,
     auth_stdout: auth.stdout,
     auth_stderr: auth.stderr,
-    output_root: args.output_root || config.outputRoot,
+    output_root: formatPathForResponse(outputRoot, config),
     next_step: version.ok
       ? auth.ok
         ? "Ready to run Boltz workflows."
@@ -229,12 +294,12 @@ export async function installCli(args = {}, config = getConfig()) {
   const download = await runCommand("curl", ["-fsSL", "https://install.boltz.bio/boltz-api/install.sh", "-o", scriptPath], {
     timeoutMs: args.timeout_ms || 120000
   });
-  if (!download.ok) return download;
-  return runCommand("sh", [scriptPath], {
+  if (!download.ok) return sanitizeCommandResult(download, config);
+  return sanitizeCommandResult(await runCommand("sh", [scriptPath], {
     timeoutMs: args.timeout_ms || 300000,
     env: args.install_dir ? { BOLTZ_API_INSTALL_DIR: args.install_dir } : {},
-    cwd: args.working_directory || process.cwd()
-  });
+    cwd: resolveWorkingDirectory(args, config)
+  }), config);
 }
 
 export function buildInstallPlan(args = {}, platform = process.platform) {
@@ -260,7 +325,7 @@ export async function authLogin(args = {}, config = getConfig()) {
   const loginArgs = ["auth", "login", "--device-code"];
   return startInteractiveCommand(config.cliPath, loginArgs, {
     timeoutMs: args.timeout_ms || 15000,
-    cwd: args.working_directory || process.cwd(),
+    cwd: resolveWorkingDirectory(args, config),
     apiKey: config.apiKey,
     label: "boltz-api auth login --device-code",
     nextStep: "Complete the Boltz device-code sign-in, then call boltz_check_setup again."
@@ -316,11 +381,13 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
   if (!args.run_name) throw new Error("run_name is required.");
   if (!args.payload && !args.payload_text) throw new Error("payload or payload_text is required.");
 
-  const cwd = args.working_directory || process.cwd();
-  const payloadPath = await writePayloadFile(args.payload, args.payload_text, cwd);
+  const cwd = resolveWorkingDirectory(args, config);
+  const outputRoot = resolveOutputRoot(args, config);
+  const payloadPath = await writePayloadFile(args.payload, args.payload_text, config.outputRoot);
   const inputRef = buildInputRef(payloadPath);
-  const outputRoot = args.output_root || config.outputRoot;
   const commands = buildWorkflowCommands(spec, { ...args, inputRef, output_root: outputRoot }, config);
+  const publicPayloadPath = formatPathForResponse(payloadPath, config);
+  const publicOutputRoot = formatPathForResponse(outputRoot, config);
 
   const estimate = await runCommand(config.cliPath, commands.estimate, {
     cwd,
@@ -332,9 +399,9 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
     return {
       workflow: toolName,
       run_name: args.run_name,
-      payload_path: payloadPath,
-      output_root: outputRoot,
-      estimate,
+      payload_path: publicPayloadPath,
+      output_root: publicOutputRoot,
+      estimate: sanitizeCommandResult(estimate, config),
       started: false,
       next_step: estimate.ok
         ? "Review the estimate. To submit this paid job, call this workflow again with start: true and the same run_name."
@@ -351,10 +418,10 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
     return {
       workflow: toolName,
       run_name: args.run_name,
-      payload_path: payloadPath,
-      output_root: outputRoot,
-      estimate,
-      start,
+      payload_path: publicPayloadPath,
+      output_root: publicOutputRoot,
+      estimate: sanitizeCommandResult(estimate, config),
+      start: sanitizeCommandResult(start, config),
       started: false,
       next_step: "The job was not submitted successfully. Inspect start stderr/stdout and retry with the same run_name if appropriate."
     };
@@ -369,7 +436,7 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
       output_root: outputRoot,
       poll_interval_seconds: resolvePollInterval(args, spec, config),
       workspace_id: args.workspace_id,
-      working_directory: cwd
+      working_directory: args.working_directory
     }, config);
   }
 
@@ -377,25 +444,26 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
     workflow: toolName,
     run_name: args.run_name,
     job_id: jobId,
-    payload_path: payloadPath,
-    output_root: outputRoot,
-    estimate,
-    start,
+    payload_path: publicPayloadPath,
+    output_root: publicOutputRoot,
+    estimate: sanitizeCommandResult(estimate, config),
+    start: sanitizeCommandResult(start, config),
     started: true,
     downloader
   };
 }
 
 export async function startDownloadProcess(args, config = getConfig()) {
+  const outputRoot = resolveOutputRoot(args, config);
   const downloadArgs = buildDownloadArgs({
     id: args.id,
     run_name: args.run_name,
-    output_root: args.output_root || config.outputRoot,
+    output_root: outputRoot,
     poll_interval_seconds: args.poll_interval_seconds || config.defaultPollIntervalSeconds || 30,
     workspace_id: args.workspace_id
   });
   const child = spawn(config.cliPath, downloadArgs, {
-    cwd: args.working_directory || process.cwd(),
+    cwd: resolveWorkingDirectory(args, config),
     env: config.apiKey ? { ...process.env, BOLTZ_API_KEY: config.apiKey } : process.env,
     shell: false
   });
@@ -404,8 +472,8 @@ export async function startDownloadProcess(args, config = getConfig()) {
     handle,
     pid: child.pid,
     run_name: args.run_name,
-    output_root: args.output_root || config.outputRoot,
-    args: downloadArgs,
+    output_root: formatPathForResponse(outputRoot, config),
+    args: sanitizeCommandArgs(downloadArgs, config),
     status: "running",
     stdout_tail: "",
     stderr_tail: ""
@@ -461,6 +529,7 @@ export async function jobStatus(args, config = getConfig()) {
     return { downloader: downloaderProcesses.get(args.downloader_handle) };
   }
   if (args.run_name) {
+    const outputRoot = resolveOutputRoot(args, config);
     const status = await runCommand(config.cliPath, [
       "--format",
       "json",
@@ -468,9 +537,9 @@ export async function jobStatus(args, config = getConfig()) {
       "--name",
       args.run_name,
       "--root-dir",
-      args.output_root || config.outputRoot
+      outputRoot
     ], { timeoutMs: args.timeout_ms || 30000, apiKey: config.apiKey });
-    return { download_status: status };
+    return { download_status: sanitizeCommandResult(status, config) };
   }
   if (args.id && args.resource) {
     const retrieve = await runCommand(config.cliPath, buildRetrieveArgs(args), {
