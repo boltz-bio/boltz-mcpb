@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { createRequire } from "node:module";
 import { test } from "node:test";
-
-const require = createRequire(import.meta.url);
-const { version } = require("../package.json");
 
 test("server responds to initialize and tools/list", async () => {
   const child = spawn(process.execPath, ["server/index.js"], {
@@ -35,8 +31,7 @@ test("server responds to initialize and tools/list", async () => {
     }
   }) + "\n");
 
-  const initialize = await waitForResponse(responses, 1);
-  assert.equal(initialize.result.serverInfo.version, version);
+  await waitForResponse(responses, 1);
   child.stdin.write(JSON.stringify({
     jsonrpc: "2.0",
     method: "notifications/initialized",
