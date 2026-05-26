@@ -14,11 +14,11 @@ const payloadSchema = {
   payload: z.record(z.unknown()).optional().describe("Boltz workflow input as a structured object."),
   payload_text: z.string().optional().describe("Raw JSON payload text. Use this instead of payload when exact formatting matters."),
   workspace_id: z.string().optional().describe("Optional Boltz workspace ID."),
-  output_root: z.string().optional().describe("Directory where downloaded results should be stored."),
+  output_root: z.string().optional().describe("Directory where downloaded results should be stored. Must resolve inside the configured Boltz output root."),
   start: z.boolean().optional().default(false).describe("Submit the paid job after estimate-cost succeeds. Defaults to false so users can review estimates first."),
   auto_download: z.boolean().optional().default(true).describe("After submit, start download-results in the background."),
   poll_interval_seconds: z.number().int().min(5).max(300).optional().describe("Seconds between result-download status checks."),
-  working_directory: z.string().optional().describe("Advanced: working directory for local Boltz operations."),
+  working_directory: z.string().optional().describe("Advanced: working directory for local Boltz operations. Must resolve inside the configured Boltz output root."),
   timeout_ms: z.number().int().min(1000).max(900000).optional().describe("Advanced: timeout for setup, estimate, or start operations.")
 };
 
@@ -34,7 +34,7 @@ export const toolDefinitions = [
       openWorldHint: true
     },
     inputSchema: {
-      output_root: z.string().optional()
+      output_root: z.string().optional().describe("Must resolve inside the configured Boltz output root.")
     },
     handler: checkSetup
   },
@@ -50,7 +50,7 @@ export const toolDefinitions = [
     },
     inputSchema: {
       install_dir: z.string().optional().describe("Optional install directory passed as BOLTZ_API_INSTALL_DIR on macOS/Linux."),
-      working_directory: z.string().optional(),
+      working_directory: z.string().optional().describe("Must resolve inside the configured Boltz output root."),
       timeout_ms: z.number().int().min(1000).max(900000).optional()
     },
     handler: installCli
@@ -66,7 +66,7 @@ export const toolDefinitions = [
       openWorldHint: true
     },
     inputSchema: {
-      working_directory: z.string().optional(),
+      working_directory: z.string().optional().describe("Must resolve inside the configured Boltz output root."),
       timeout_ms: z.number().int().min(1000).max(900000).optional()
     },
     handler: authLogin
@@ -97,10 +97,10 @@ export const toolDefinitions = [
     inputSchema: {
       id: z.string().min(1).describe("Boltz job ID."),
       run_name: z.string().min(1).describe("Run name used for local result directory and resume checkpoint."),
-      output_root: z.string().optional(),
+      output_root: z.string().optional().describe("Must resolve inside the configured Boltz output root."),
       workspace_id: z.string().optional(),
       poll_interval_seconds: z.number().int().min(5).max(300).optional(),
-      working_directory: z.string().optional()
+      working_directory: z.string().optional().describe("Must resolve inside the configured Boltz output root.")
     },
     handler: downloadResults
   },
@@ -117,7 +117,7 @@ export const toolDefinitions = [
     inputSchema: {
       downloader_handle: z.string().optional(),
       run_name: z.string().optional(),
-      output_root: z.string().optional(),
+      output_root: z.string().optional().describe("Must resolve inside the configured Boltz output root."),
       id: z.string().optional(),
       workspace_id: z.string().optional().describe("Optional Boltz workspace ID for remote retrieve calls."),
       resource: z.enum([
