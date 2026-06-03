@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "boltz",
   "display_name": "Boltz",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Predict molecular structures and binding interactions, screen libraries, and design binders with the Boltz API.",
   "long_description": "The official Model Context Protocol (MCP) server for the Boltz API. Predict molecular structures and binding interactions, screen small-molecule and protein libraries against a target, and design small molecules and protein binders — all from chat. Each workflow estimates cost before running, then downloads structured results to your workspace when the job completes.",
   "author": {
