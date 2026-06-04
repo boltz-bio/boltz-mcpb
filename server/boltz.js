@@ -5,6 +5,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+// Identifies this MCP plugin as the originating client for compute-api usage
+// analytics. The boltz-api CLI reads BOLTZ_API_CLIENT and forwards it as the
+// X-Boltz-Client header. An explicit BOLTZ_API_CLIENT in the environment wins.
+const MCPB_CLIENT_ID = "claude-desktop-mcp";
+
+function withClientEnv(env) {
+  return { ...env, BOLTZ_API_CLIENT: env.BOLTZ_API_CLIENT || MCPB_CLIENT_ID };
+}
+
 export const workflowSpecs = {
   boltz_structure_and_binding: {
     resource: "predictions:structure-and-binding",
@@ -197,7 +206,7 @@ export function buildRetrieveArgs(args) {
 
 export async function runCommand(cliPath, args, options = {}) {
   const timeoutMs = options.timeoutMs ?? 120000;
-  const env = { ...process.env, ...options.env };
+  const env = withClientEnv({ ...process.env, ...options.env });
   if (options.apiKey) {
     env.BOLTZ_API_KEY = options.apiKey;
   }
@@ -333,7 +342,7 @@ export async function authLogin(args = {}, config = getConfig()) {
 }
 
 export function startInteractiveCommand(cliPath, args, options = {}) {
-  const env = { ...process.env, ...options.env };
+  const env = withClientEnv({ ...process.env, ...options.env });
   if (options.apiKey) {
     env.BOLTZ_API_KEY = options.apiKey;
   }
@@ -464,7 +473,7 @@ export async function startDownloadProcess(args, config = getConfig()) {
   });
   const child = spawn(config.cliPath, downloadArgs, {
     cwd: resolveWorkingDirectory(args, config),
-    env: config.apiKey ? { ...process.env, BOLTZ_API_KEY: config.apiKey } : process.env,
+    env: withClientEnv(config.apiKey ? { ...process.env, BOLTZ_API_KEY: config.apiKey } : process.env),
     shell: false
   });
   const handle = `${args.run_name}:${Date.now()}`;

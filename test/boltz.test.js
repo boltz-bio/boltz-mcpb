@@ -16,6 +16,7 @@ import {
   resolveCliPath,
   resolveOutputRoot,
   resolveWorkingDirectory,
+  runCommand,
   runWorkflow,
   writePayloadFile,
   workflowSpecs
@@ -233,4 +234,23 @@ test("remote job status passes workspace id to retrieve", () => {
     "--workspace-id",
     "ws_123"
   ]);
+});
+
+test("spawned commands self-identify as the MCP client via BOLTZ_API_CLIENT", async () => {
+  const result = await runCommand(
+    process.execPath,
+    ["-e", "process.stdout.write(process.env.BOLTZ_API_CLIENT || 'unset')"],
+    {}
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.stdout, "claude-desktop-mcp");
+});
+
+test("an explicit BOLTZ_API_CLIENT overrides the MCP default", async () => {
+  const result = await runCommand(
+    process.execPath,
+    ["-e", "process.stdout.write(process.env.BOLTZ_API_CLIENT || 'unset')"],
+    { env: { BOLTZ_API_CLIENT: "codex" } }
+  );
+  assert.equal(result.stdout, "codex");
 });
