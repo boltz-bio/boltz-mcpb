@@ -1,0 +1,8 @@
+test/
+examples/
+*.test.js
+npm-debug.log*
+README.md
+.github/
+.gitignore
+.mcpbignore
