@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  getGuidance,
+  guidanceTopicIds,
+  workflowDescription,
+  workflowGuideIds
+} from "./guidance.js";
+import {
   authLogin,
   checkSetup,
   downloadResults,
@@ -10,12 +16,12 @@ import {
 } from "./boltz.js";
 
 const payloadSchema = {
-  run_name: z.string().min(1).describe("Stable slug used as idempotency key and download run name."),
-  payload: z.record(z.unknown()).optional().describe("Boltz workflow input as a structured object."),
-  payload_text: z.string().optional().describe("Raw JSON payload text. Use this instead of payload when exact formatting matters."),
-  workspace_id: z.string().optional().describe("Optional Boltz workspace ID."),
+  run_name: z.string().min(1).describe("Stable slug used as the idempotency key and result-download run name. Reuse it when retrying the same intended job."),
+  payload: z.record(z.unknown()).optional().describe("Valid Boltz API JSON payload for this exact workflow. Ask for missing biological inputs instead of guessing."),
+  payload_text: z.string().optional().describe("Raw JSON payload text. Use this instead of payload only when exact formatting matters."),
+  workspace_id: z.string().optional().describe("Optional Boltz workspace ID. Ask the user if they mention multiple workspaces and no ID is known."),
   output_root: z.string().optional().describe("Directory where downloaded results should be stored. Must resolve inside the configured Boltz output root."),
-  start: z.boolean().optional().default(false).describe("Submit the paid job after estimate-cost succeeds. Defaults to false so users can review estimates first."),
+  start: z.boolean().optional().default(false).describe("Submit the paid job after estimate-cost succeeds. Defaults to false. Do not set true until the user confirms the estimate."),
   auto_download: z.boolean().optional().default(true).describe("After submit, start download-results in the background."),
   poll_interval_seconds: z.number().int().min(5).max(300).optional().describe("Seconds between result-download status checks."),
   working_directory: z.string().optional().describe("Advanced: working directory for local Boltz operations. Must resolve inside the configured Boltz output root."),
@@ -71,10 +77,33 @@ export const toolDefinitions = [
     },
     handler: authLogin
   },
+  {
+    name: "boltz_get_guidance",
+    title: "Get Boltz guidance",
+    description: [
+      "Read bundled Boltz workflow guidance before preparing payloads or calling paid workflow tools.",
+      "This is read-only and does not call the Boltz API.",
+      "Use it when the user asks to run, design, screen, predict, estimate, download, resume, install, or authenticate with Boltz."
+    ].join(" "),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    },
+    inputSchema: {
+      workflow: z.enum(workflowGuideIds).describe("Guide to read. Use protein-design for protein binder design, small-molecule-design for ligand generation, and structure-and-binding for structure or affinity prediction."),
+      topic: z.enum(guidanceTopicIds).optional().describe("Optional section to focus on. Use full when preparing a payload for the first time.")
+    },
+    handler: getGuidance
+  },
   ...Object.entries(workflowSpecs).map(([name, spec]) => ({
     name,
     title: spec.title,
-    description: `Estimate and optionally start a Boltz ${spec.title.toLowerCase()} workflow, then optionally download results.`,
+    description: [
+      `Estimate and optionally start a Boltz ${spec.title.toLowerCase()} workflow, then optionally download results.`,
+      workflowDescription(name)
+    ].join(" "),
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,

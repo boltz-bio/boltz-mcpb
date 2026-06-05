@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { getGuidance, guidancePrompts, guidanceResources } from "../server/guidance.js";
 import {
   buildDownloadArgs,
   buildInstallPlan,
@@ -31,8 +32,28 @@ test("all workflow tools are registered", () => {
   assert.equal(names.has("boltz_check_setup"), true);
   assert.equal(names.has("boltz_install_cli"), true);
   assert.equal(names.has("boltz_auth_login"), true);
+  assert.equal(names.has("boltz_get_guidance"), true);
   assert.equal(names.has("boltz_download_results"), true);
   assert.equal(names.has("boltz_job_status"), true);
+});
+
+test("guidance docs are exposed for workflow tools", async () => {
+  const guidance = await getGuidance({ workflow: "protein-design", topic: "full" });
+
+  assert.equal(guidance.workflow, "protein-design");
+  assert.equal(guidance.tool_name, "boltz_protein_design");
+  assert.equal(guidance.documents.some((document) => document.uri === "boltz://guides/protein-design"), true);
+  assert.equal(guidance.documents.some((document) => document.uri === "boltz://references/protein-design/api"), true);
+  assert.match(guidance.documents.map((document) => document.text).join("\n"), /protein binders/i);
+  assert.equal(guidanceResources.some((resource) => resource.uri === "boltz://guides/protein-design"), true);
+  assert.equal(guidancePrompts.some((prompt) => prompt.name === "boltz_protein_design_workflow"), true);
+});
+
+test("workflow tool descriptions point at guidance and cost confirmation", () => {
+  const proteinDesign = toolDefinitions.find((tool) => tool.name === "boltz_protein_design");
+  assert.match(proteinDesign.description, /boltz_get_guidance/);
+  assert.match(proteinDesign.description, /start=false/);
+  assert.match(proteinDesign.description, /start=true/);
 });
 
 test("workflow commands match the skills CLI shape", () => {

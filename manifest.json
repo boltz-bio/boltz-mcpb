@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "boltz",
   "display_name": "Boltz",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Predict molecular structures and binding interactions, screen libraries, and design binders with the Boltz API.",
   "long_description": "The official Model Context Protocol (MCP) server for the Boltz API. Predict molecular structures and binding interactions, screen small-molecule and protein libraries against a target, and design small molecules and protein binders — all from chat. Each workflow estimates cost before running, then downloads structured results to your workspace when the job completes.",
   "author": {
@@ -45,24 +45,28 @@
       "description": "Start Boltz sign-in and return the login instructions needed to connect your account."
     },
     {
+      "name": "boltz_get_guidance",
+      "description": "Read bundled Boltz workflow guidance before preparing payloads or calling workflow tools."
+    },
+    {
       "name": "boltz_structure_and_binding",
-      "description": "Estimate and optionally start one Boltz structure-and-binding job, then optionally launch result download."
+      "description": "Estimate and optionally start one Boltz structure-and-binding job, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
       "name": "boltz_small_molecule_screen",
-      "description": "Estimate and optionally start one small-molecule library screen, then optionally launch result download."
+      "description": "Estimate and optionally start one small-molecule library screen, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
       "name": "boltz_small_molecule_design",
-      "description": "Estimate and optionally start one small-molecule design job, then optionally launch result download."
+      "description": "Estimate and optionally start one small-molecule design job, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
       "name": "boltz_protein_screen",
-      "description": "Estimate and optionally start one protein-family screen, then optionally launch result download."
+      "description": "Estimate and optionally start one protein-family screen, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
       "name": "boltz_protein_design",
-      "description": "Estimate and optionally start one protein design job, then optionally launch result download."
+      "description": "Estimate and optionally start one protein design job, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
       "name": "boltz_download_results",
@@ -73,6 +77,7 @@
       "description": "Check Boltz job progress, local result download state, or recent downloader activity."
     }
   ],
+  "prompts_generated": true,
   "keywords": [
     "boltz",
     "boltz-compute",
