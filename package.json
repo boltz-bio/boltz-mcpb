@@ -1,6 +1,6 @@
 {
   "name": "boltz-mcpb",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Predict structures, screen molecules and proteins, and design binders.",
   "type": "module",
   "private": true,
