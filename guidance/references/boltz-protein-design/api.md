@@ -69,14 +69,7 @@ Server rejects `num_proteins < 10` with `VALIDATION_ERROR`. Validate client-side
 
 ## Cost
 
-Cost scales with **total complex length** (target + binder), not flat per design. The spec doesn't expose a formula; `estimate-cost` returns `breakdown.{application, cost_per_unit_usd, num_units}` where `num_units` may exceed `num_proteins` when total length crosses size tiers. Examples:
-
-| Target + binder | num_proteins | Empirical `estimated_cost_usd` |
-|---|---|---|
-| Minimal peptide target + 12-mer peptide binder | 10 | ≈$0.250 (1× tier) |
-| GFP (238 aa) target + 20-mer peptide binder | 10 | ≈$0.500 (2× tier) |
-
-Always quote `estimated_cost_usd` from the response. Do not hardcode a per-protein rate.
+Cost is tiered by **total complex length** (target crop + binder), not flat per design, and both the target crop and the designed binder count toward the length — so the tier is easy to misjudge. `estimate-cost` returns `breakdown.{application, cost_per_unit_usd, num_units}` (where `num_units` may exceed `num_proteins` as the combined length crosses tiers) and is the **only** source to use: quote `estimated_cost_usd` from it and never compute, estimate, or state a cost yourself.
 
 ## `binder_specification` — variant 1: `boltz_curated`
 
@@ -264,7 +257,7 @@ Optional fields: `epitope_residues`, `epitope_ligand_chains`, `bonds`, `constrai
 
 ## `bonds` and `constraints` shapes
 
-Same as the structure-and-binding skill — see `references/api.md` of that skill for full detail. Only include when the user explicitly asks for geometric steering.
+Same as the structure-and-binding skill — see `references/api.md` of that skill for full detail. Only include when the user explicitly asks for geometry constraints.
 
 ## Outputs (after `download-results`)
 

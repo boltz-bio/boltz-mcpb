@@ -99,7 +99,7 @@ Entity fields:
 Optional target fields:
 
 - `pocket_residues` — `{chain_id: [residue_index, ...]}`. **0-based indices.** Narrows where ligands are docked.
-- `reference_ligands` — list of SMILES strings (known binders) to seed pocket detection if `pocket_residues` isn't provided.
+- `reference_ligands` — list of SMILES strings (known binders) to help locate the pocket if `pocket_residues` isn't provided.
 
 ### Polymer modifications
 
@@ -213,6 +213,7 @@ Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadat
 - `metrics.structure_confidence`
 - `metrics.complex_plddt`, `metrics.complex_iplddt`
 - `metrics.iptm`, `metrics.ptm`
+- `adme` — Tier-1 ADME triage, returned **free** with every screen (sibling of `metrics`, not nested in it). Object with `solubility` (categorical: `high-confidence` / `medium-confidence` / `high-risk`), `permeability` (numeric score), and `lipophilicity` (numeric LogD). May be absent on a failed molecule. Approximate estimates for triage/ranking, not absolute measurements.
 - `artifacts.structure.url`, `artifacts.archive.url` (presigned, short-lived)
 - `warnings` — any server warnings for this molecule
 

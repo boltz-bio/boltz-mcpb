@@ -175,7 +175,7 @@ Behavior:
 - Writes `<output-root>/<run-name>/.boltz-run.json` containing the cursor (`cursor_after_id`), status, idempotency key, and timing.
 - On re-run with the same `--root-dir` + `--name`, reuses `.boltz-run.json` and only pulls results past the recorded cursor. Idempotent.
 - If the run dir exists and `.boltz-run.json` has the ID, `--id` can be omitted.
-- If `--name` is not passed, the CLI generates a random petname dir — use `--name` for cross-session resume.
+- If `--name` is not passed, the CLI generates a randomly named dir — use `--name` for cross-session resume.
 - Do not use shell `&`, terminal backgrounding, or `nohup` as the Codex detach mechanism. Codex may clean up shell-backgrounded descendants when the tool command exits, before `.boltz-run.json` is fully written. Prefer the managed foreground session with a short yield, or recover later by re-running `download-results` with the same ID/name/root.
 
 ### Directory layout
