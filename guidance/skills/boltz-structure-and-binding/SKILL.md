@@ -17,7 +17,7 @@ Use this skill for one defined complex, not a library workflow.
    {"entities": [{"type": "protein", "chain_ids": ["A"], "value": "MKTAYIAKQRQISFVKSHFSRQ"}]}
    ```
 
-   `type` is one of `protein | rna | dna | ligand_smiles | ligand_ccd`. Chain IDs go in entity order (`A`, `B`, `C`, …) unless the user specifies otherwise. Read `references/api.md` for per-type field variants (`cyclic`, `modifications`, ligand CCD codes, etc.) **before** authoring your first payload — agent guesses like `sequence:` or `chain_id: "A"` (singular) fail with opaque 400s.
+   `type` is one of `protein | rna | dna | ligand_smiles | ligand_ccd`. Chain IDs go in entity order (`A`, `B`, `C`, …) unless the user specifies otherwise. Read `references/api.md` for per-type field variants (`cyclic`, `modifications`, ligand CCD codes, etc.) **before** authoring your first payload — agent guesses like `sequence:` or `chain_id: "A"` (singular) fail with unclear 400 errors.
 2. If the user wants binding metrics, add a flat `binding` block with an explicit `type` field. For ligand-protein binding use:
 
    ```yaml
@@ -75,7 +75,7 @@ boltz-api download-results \
 - Keep payload field names exactly as the API body names shown in `references/api.md`; then pass the merged payload with `--input @yaml:///absolute/path/payload.yaml` or `@json:///absolute/path/payload.json`. Never use `@./payload.yaml` or `@file://` for object-typed payloads.
 - Use absolute paths for the output root, payload files, and embedded structure files. Do not `cd` into the run directory for follow-up commands; pass the same `--root-dir` and use absolute paths so later relative paths do not drift.
 - Residue indices are 0-based wherever the payload asks for residue positions (constraints, modifications, contact tokens).
-- For CIF/PDB bytes embedded in `--target` / `structure.data`, use `@data:///absolute/path/file.cif` — it sniffs binary and base64-encodes. Don't use bare `@path` for binary data.
+- For CIF/PDB bytes embedded in `--target` / `structure.data`, use `@data:///absolute/path/file.cif` — it detects binary and base64-encodes. Don't use bare `@path` for binary data.
 - Use the same slug as both `--idempotency-key` at submit time and `--name` at download time so re-runs are idempotent and resume from `.boltz-run.json`.
 - In permission-gated agents such as Claude Code, keep each Boltz call as a top-level command that starts with `boltz-api`. Prefer concrete arguments over `sh -c`, inline environment assignments, aliases, wrapper scripts, loops, or pipelines around the `boltz-api` invocation unless the user already allowed that exact command form. Use `--raw-output --transform id`, read the printed ID, then paste that literal ID into the next `download-results` command.
 - Prefer the agent runtime's background/non-blocking command mode for `download-results`. In Codex specifically, keep `download-results` in the foreground and set the shell tool yield to 1000 ms; Codex will return a `session_id` if the command is still running. Do not append `&` or use `nohup` in Codex because the tool runner may clean up shell-backgrounded descendants before `.boltz-run.json` is fully written.
@@ -83,6 +83,7 @@ boltz-api download-results \
 - Only check progress when the user asks. In Codex, poll the saved session with an empty `write_stdin`, or prefer `boltz-api --format json download-status --name "<run-name>" --root-dir "/absolute/path/boltz-experiments"` for structured local checkpoint state. Do not loop `retrieve` yourself.
 - If detached download needs to be restarted, re-run `boltz-api download-results` with the same `--name "<run-name>"` and the same `--root-dir`.
 - Poll interval: keep `--poll-interval-seconds 10` for SAB — predictions usually finish in under a few minutes.
+- Cost: there is no published per-unit rate to cite for SAB — run `estimate-cost` and state only the figure it returns. Don't estimate or comment on cost.
 
 ## Escape Hatch
 

@@ -31,7 +31,7 @@ irm https://install.boltz.bio/boltz-api/install.ps1 | iex
 
 The installer updates an existing `boltz-api` on `PATH`. If no binary is found, it installs to a user-local bin directory. Add the installed binary to `PATH` if `boltz-api --version` is still not found after install.
 
-Sandbox avoidance is critical because it can block browser login, OAuth callbacks, temp files, credential storage, and user-wide install paths. If the user asks for a normal install, install or authenticate `boltz-api` in the user's real environment. In a filesystem sandbox, request the host sandbox bypass/escalation needed for the install or auth flow.
+Working around the sandbox is critical because the sandbox can block browser login, OAuth callbacks, temp files, credential storage, and user-wide install paths. If the user asks for a normal install, install or authenticate `boltz-api` in the user's real environment. In a filesystem sandbox, request the host sandbox bypass/escalation needed for the install or auth flow.
 
 Read [references/sandbox.md](references/sandbox.md) when an agent sandbox blocks the installer, browser auto-open, OAuth callback, credential storage, temp files, or global install path.
 
@@ -61,9 +61,9 @@ export BOLTZ_API_KEY=<api-key>
 
 ## Version Checks
 
-Do not hard-code expected command surfaces or minimum versions in this skill. Treat the CLI's own update check as the source of truth.
+Do not hard-code expected commands or minimum versions in this skill. Treat the CLI's own update check as the source of truth.
 
-When `boltz-api` reports that an update is available or required, relay that message and the install command it provides. The CLI may power this with a Boltz-hosted version metadata endpoint such as `/cli/version`, returning latest version, minimum supported version, whether an update is required, and platform-appropriate install instructions.
+When `boltz-api` reports that an update is available or required, relay that message and the install command it provides. The CLI may get this from a Boltz-hosted version metadata endpoint such as `/cli/version`, returning latest version, minimum supported version, whether an update is required, and platform-appropriate install instructions.
 
 If a user asks why the CLI thinks it is stale, explain the split:
 

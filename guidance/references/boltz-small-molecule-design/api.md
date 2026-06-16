@@ -65,7 +65,7 @@ Cost is quoted by `estimate-cost` on the exact payload. For small targets it is 
 
 ## `chemical_space`
 
-Optional. Documented value: `"enamine_real"` — restricts generation to synthesis-accessible space from the Enamine REAL library. Omit unless the user explicitly wants this.
+Optional. Documented value: `"enamine_real"` — restricts generation to synthesizable molecules from the Enamine REAL library. Omit unless the user explicitly wants this.
 
 ## `target`
 
@@ -96,7 +96,7 @@ Entity fields:
 Optional target fields:
 
 - `pocket_residues` — `{chain_id: [0-based residue_index, ...]}`.
-- `reference_ligands` — list of SMILES for pocket seeding.
+- `reference_ligands` — list of SMILES to help locate the pocket.
 
 ### Polymer modifications
 

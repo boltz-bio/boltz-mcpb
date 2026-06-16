@@ -31,7 +31,7 @@ boltz-api --format json download-status \
   --root-dir "/absolute/path/boltz-experiments"
 
 # Mode 1: list recent jobs across all 5 resources.
-# NB: the CLI emits one JSON object per record (streamed, no {data:[]} wrapper).
+# Note: the CLI emits one JSON object per record (streamed, no {data:[]} wrapper).
 # --limit is per-page and the CLI auto-paginates, so cap each explicit command with head.
 boltz-api predictions:structure-and-binding list --limit 20 --format jsonl | head -20
 boltz-api small-molecule:library-screen list --limit 20 --format jsonl | head -20

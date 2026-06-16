@@ -125,7 +125,7 @@ structure:
   url: "https://example.com/target.cif"
 ```
 
-Base64 (for a local file — use `@data://` in the CLI, which sniffs binary and encodes):
+Base64 (for a local file — use `@data://` in the CLI, which detects binary and encodes):
 
 ```yaml
 structure:
@@ -134,7 +134,7 @@ structure:
   data: "@data:///abs/path/to/target.cif"
 ```
 
-**Do not** use bare `@path/to/file.cif` here — the auto-sniff has historically miscategorized CIF as plain text and broken the server parser. Prefer `@data://` explicitly.
+**Do not** use bare `@path/to/file.cif` here — automatic file-type detection has historically miscategorized CIF as plain text and broken the server parser. Prefer `@data://` explicitly.
 
 ### `chain_selection` values
 
@@ -184,7 +184,7 @@ Optional fields:
 
 ## `bonds` and `constraints`
 
-Only include when the user explicitly asks for geometric steering.
+Only include when the user explicitly asks for geometry constraints.
 
 ### Bond shape
 

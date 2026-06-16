@@ -11,19 +11,40 @@ If the agent host sandbox blocks `boltz-api` install/auth/API calls, use `boltz-
 
 Use this skill when the user wants de novo protein / peptide / antibody / nanobody binders.
 
-1. Normalize the target (same shape as protein-screen): `structure_template` if a CIF/PDB is available, else `no_template`.
-2. Pick the `binder_specification` variant. Supported variants include:
+1. **Decide on target exploration first (new targets).** For a new target where the user hasn't already fixed the binding site and crop, your first action — before authoring a payload, normalizing the target, or running `estimate-cost` — is to raise the choice between a target-exploration pass and designing directly, with a **genuine recommendation** for this target:
+   - Unknown site, or a multi-domain / large target → recommend exploration (it cheaply scouts a few framings, ≈50 designs each, and finds the best before a full run).
+   - A well-characterized site → it's fine to recommend going (mostly) direct, perhaps with a quick check of whether pinning the epitope beats letting the binder find its own spot. Say so plainly — don't offer exploration as boilerplate or tell the user you are "required" to.
+
+   Phrase it as a question that works *with* the user (they usually know their target's biology), e.g.:
+
+   > "This is a fresh target — I'd suggest a quick exploration pass that scouts a few framings and picks the best before a full run. Or, if you already know the site and crop, we can design directly. Which would you like?"
+
+   **Do not mention a campaign size or tier here** — not even folded into this opening approach question. The full-run size is settled later, after the scouts pick a winner (its yield informs the tier), so don't ask it up front when exploration is on the table. If the user opts into exploration — or has already said they want to explore / let the design find its own epitope — read [references/target-exploration.md](references/target-exploration.md), follow it, then resume at step 8 with the chosen framing and recommended `num_proteins`. If they want to design directly, continue below.
+2. Normalize the target (same shape as protein-screen): `structure_template` if a CIF/PDB is available, else `no_template`.
+3. Pick the `binder_specification` variant. Supported variants include:
    - `boltz_curated` — recommended default for antibody and nanobody design. Boltz selects from maintained scaffold/template lists (`binder: boltz_antibody` or `boltz_nanobody`).
    - `structure_template` — redesign motifs in an existing binder scaffold (CIF + `design_motifs` with `replacement` / `insertion` segments).
    - `no_template` — generate from the sequence DSL (fixed residues + designed segments like `5..10` or `8`).
-3. For antibody or nanobody requests, ask before authoring the payload: "I recommend Boltz's curated antibody/nanobody scaffolds for this. Do you want the curated default, or do you have custom scaffold structures/CDR motifs to use?" If the user picks curated, use `type: boltz_curated`; if they want custom scaffold control, use `type: structure_template`.
-4. Pick `modality`: `peptide`, `antibody`, `nanobody`, or `custom_protein` for `structure_template` and `no_template`. Do not include `modality` on `boltz_curated`; use `binder` instead.
-5. Pick `num_proteins` — minimum **10**, server rejects lower. If the user says a smaller number, explain the floor and propose 10.
-6. Supported optional features include rules such as excluded amino acids, excluded sequence motifs with `X` wildcards, and max hydrophobic fraction. Add `rules` only on request; read [references/api.md](references/api.md) for exact shapes and examples.
-7. Author the payload YAML or JSON, run `estimate-cost`, show the USD cost, wait for explicit confirmation. **Cost scales with total complex length** (target + binder), not just `num_proteins`. A small peptide + small target runs ≈$0.025 per design; larger complexes (e.g. GFP + 20-mer binder) run ≈$0.05 per design. Always quote the exact figure from `estimate-cost`.
-8. `start` to submit. Capture the ID.
-9. Launch `download-results` with the agent runtime's background/non-blocking command facility. In Claude Code, use Bash with `run_in_background: true`. In Codex, run `download-results` as a foreground shell command with `yield_time_ms: 1000`; if Codex returns a `session_id`, keep it for optional later polling. After launching it, report the job ID, run name, and output directory, then end the turn immediately. Do not wait on the background session unless the user explicitly asks for progress.
-10. Rank from `<output-root>/<run-name>/results/index.jsonl` by `binding_confidence` descending. Use `iptm` and `min_interaction_pae` as tiebreakers. `optimization_score` is not emitted for this endpoint. Read [references/results.md](references/results.md) for output layout and metric details.
+4. For antibody or nanobody requests, ask before authoring the payload: "I recommend Boltz's curated antibody/nanobody scaffolds for this. Do you want the curated default, or do you have custom scaffold structures/CDR motifs to use?" If the user picks curated, use `type: boltz_curated`; if they want custom scaffold control, use `type: structure_template`.
+5. Pick `modality`: `peptide`, `antibody`, `nanobody`, or `custom_protein` for `structure_template` and `no_template` (use `custom_protein` for a "miniprotein" or generic "protein binder"). **If the user already named the modality, take it as given — don't ask again.** Do not include `modality` on `boltz_curated`; use `binder` instead.
+6. Pick `num_proteins` — see [Run sizing](#run-sizing). **10** is the hard floor (server rejects lower), but it is a test size, not a campaign. When the user has not given a count, propose a campaign tier (default **50,000**), not the floor.
+7. Supported optional features include rules such as excluded amino acids, excluded sequence motifs with `X` wildcards, and max hydrophobic fraction. Add `rules` only on request; read [references/api.md](references/api.md) for exact shapes and examples.
+8. Author the payload YAML or JSON, then run `estimate-cost` and apply the **spending gate** (Always Do This) before `start`. (Cost model — tiered by total complex length, `estimate-cost` is the only source: see [`## Cost`](references/api.md) in api.md.)
+9. `start` to submit. Capture the ID.
+10. Launch `download-results` with the agent runtime's background/non-blocking command facility. In Claude Code, use Bash with `run_in_background: true`. In Codex, run `download-results` as a foreground shell command with `yield_time_ms: 1000`; if Codex returns a `session_id`, keep it for optional later polling. After launching it, report the job ID, run name, and output directory, then end the turn immediately. Do not wait on the background session unless the user explicitly asks for progress.
+11. Rank from `<output-root>/<run-name>/results/index.jsonl` by `binding_confidence` descending. Use `iptm` and `min_interaction_pae` as tiebreakers. `optimization_score` is not emitted for this endpoint. Read [references/results.md](references/results.md) for output layout and metric details.
+
+## Run sizing
+
+De novo design is a generate-and-filter campaign: you make many binders and keep the rare good ones, so a real run is **large**. Do not anchor on the `num_proteins` floor of 10 — that is only useful for a quick setup test. When the user names a count, honor it (≥10). When they do not, explain the tiers and propose one:
+
+| Tier | `num_proteins` | When |
+|---|---|---|
+| Small screen | 20,000 | Quick look / tight budget |
+| **Medium (recommended)** | **50,000** | Default for a real campaign |
+| Large | 100,000 | Hard target / maximal coverage |
+
+Present the tiers as design **counts**, not dollars: don't put a price next to a tier unless `estimate-cost` returned it — run `estimate-cost` on the tier the user leans toward and show that figure, and never extrapolate one estimate across the others. Then apply the **spending gate** (Always Do This) before submitting. If the setup is unproven, suggest a small test run (tens of designs) or the full [target-exploration](references/target-exploration.md) pass first.
 
 ## Command Pattern
 
@@ -54,8 +75,8 @@ Payload keys are `num_proteins`, `target`, `binder_specification` — API body f
 
 ## Always Do This
 
-- Enforce `num_proteins >= 10` before calling `estimate-cost`. Server rejects anything lower.
-- Cost scales with total complex length (target + binder). Always quote `estimated_cost_usd` from `estimate-cost`. 
+- Enforce `num_proteins >= 10` before calling `estimate-cost` (server rejects lower), but 10 is the floor, not a campaign — see [Run sizing](#run-sizing) and propose a tier (default 50,000) when the user gives no count.
+- **Spending gate — explicit go-ahead before every `start`.** `start` spends real money. A plan you already described, an earlier phase's approval, or a cost that looks "trivial" are **not** authorization — even a cheap run needs a fresh yes. Run `estimate-cost`, show the `estimated_cost_usd` it returns (summed for a batch), and wait for the user to say go. This holds **even when tool calls are pre-approved** (accept-edits / auto-accept / bypass modes) — there you are the only cost gate. Never quote or assume a dollar figure you didn't get from `estimate-cost` (cost model: [`## Cost`](references/api.md) in api.md).
 - For antibody or nanobody design, recommend `binder_specification.type: boltz_curated` and ask the user to confirm they do not want custom scaffold/CDR control before building the payload. Use `binder: boltz_antibody` for antibody/Fab requests and `binder: boltz_nanobody` for nanobody/VHH requests.
 - Residue indices are 0-based everywhere (`design_motifs.start_index`/`end_index`, `after_residue_index`, `epitope_residues`, `flexible_residues`, bonds, constraints).
 - For CIF/PDB bytes, use `@data:///abs/path/file.cif` inside `structure.data`. Don't use bare `@path`.
@@ -66,7 +87,7 @@ Payload keys are `num_proteins`, `target`, `binder_specification` — API body f
 - Direct object flags still work as overrides, such as `--target @yaml:///absolute/path/target.yaml` or `--binder-specification @json:///absolute/path/binder.json`. Piped YAML / JSON on stdin also works, but it must use API body field names. Use the same slug for both `--idempotency-key` and `--name`.
 - In permission-gated agents such as Claude Code, keep each Boltz call as a top-level command that starts with `boltz-api`. Prefer concrete arguments over `sh -c`, inline environment assignments, aliases, wrapper scripts, loops, or pipelines around the `boltz-api` invocation unless the user already allowed that exact command form. Use `--raw-output --transform id`, read the printed ID, then paste that literal ID into the next `download-results` command.
 - Prefer the agent runtime's background/non-blocking command mode for `download-results`. In Codex specifically, keep `download-results` in the foreground and set the shell tool yield to 1000 ms; Codex will return a `session_id` if the command is still running. Do not append `&` or use `nohup` in Codex because the tool runner may clean up shell-backgrounded descendants before `.boltz-run.json` is fully written.
-- After the background/session starts, do not wait on it or poll it. Design jobs can take 30 min to several hours — `--poll-interval-seconds 60` is a sensible default. `download-results` emits JSONL progress on stderr by default; add `--progress-format text --verbose` only when you explicitly want human-readable logs. Report the job ID, run name, output directory, and that the runtime should notify when the background command completes.
+- After the background/session starts, do not wait on it or poll it. Wall-clock time scales roughly with `num_proteins` — runs of ~100 designs or fewer usually finish in a few minutes, while runs of thousands can take hours (exact time depends on the inputs and overall system load); don't quote a fixed duration. `--poll-interval-seconds 60` is a sensible default. `download-results` emits JSONL progress on stderr by default; add `--progress-format text --verbose` only when you explicitly want human-readable logs. Report the job ID, run name, output directory, and that the runtime should notify when the background command completes.
 - Only check status when the user asks. In Codex, poll the saved session with an empty `write_stdin`, or prefer `boltz-api --format json download-status --name "<run-name>" --root-dir "/absolute/path/boltz-experiments"` for structured local checkpoint state. Never run a manual poll loop.
 - If detached download needs to be restarted, re-run `boltz-api download-results` with the same `--name "<run-name>"` and the same `--root-dir`.
 - Only add `rules` on explicit user request.
