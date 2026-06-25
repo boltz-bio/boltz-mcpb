@@ -1,14 +1,15 @@
 # Check Status — Reference
 
-This skill covers all five Boltz resources via `list`, `retrieve`, and `download-results`:
+This skill covers all six Boltz resources via `list` and `retrieve`; the five non-ADME resources also support `download-results`:
 
 - `predictions:structure-and-binding`
+- `predictions:adme` — `list` / `retrieve` only (no `download-results`; results in `output.molecules[]`)
 - `small-molecule:library-screen`
 - `small-molecule:design`
 - `protein:library-screen`
 - `protein:design`
 
-This reference tracks the current CLI `main` / v0.7.0 surface: unified `--id`, merged-input design/screen commands, `download-results`, and `download-status`.
+This reference tracks the current CLI surface: unified `--id`, merged-input design/screen commands, `download-results`, and `download-status`. Treat `boltz-api --version` and the CLI's own help as the source of truth for command/flag specifics.
 
 ## Contents
 
@@ -37,7 +38,8 @@ Common columns across resources:
 
 - `id` — the job ID
 - ID prefixes identify the resource family:
-  - `pred_*` → `predictions:structure-and-binding`
+  - `sab_pred_*` → `predictions:structure-and-binding` (legacy `pred_*` IDs are still supported)
+  - `adme_pred_*` → `predictions:adme`
   - `prot_des_*` → `protein:design`
   - `prot_scr_*` → `protein:library-screen`
   - `sm_des_*` → `small-molecule:design`
@@ -54,6 +56,7 @@ Merge + sort flow:
 # instead of generating them from a shell loop. CLI output is streamed, so cap
 # each resource with head when you only need recent rows.
 boltz-api predictions:structure-and-binding list --limit 20 --format jsonl | head -20
+boltz-api predictions:adme list --limit 20 --format jsonl | head -20
 boltz-api small-molecule:library-screen list --limit 20 --format jsonl | head -20
 boltz-api small-molecule:design list --limit 20 --format jsonl | head -20
 boltz-api protein:library-screen list --limit 20 --format jsonl | head -20
@@ -72,7 +75,7 @@ Returns the full job record. Key fields:
 - `started_at`, `completed_at`, `stopped_at`, `expires_at`, `data_deleted_at`
 - `idempotency_key` — **capture this for resume** (use as `--name` on `download-results`)
 - `input` — the original submitted payload
-- `output` — full output (SAB only; pipeline endpoints stream per-item via `list-results` instead)
+- `output` — full output (SAB and ADME; pipeline endpoints stream per-item via `list-results` instead)
 - `engine` — engine metadata
 
 ### Progress fields by resource
@@ -80,6 +83,7 @@ Returns the full job record. Key fields:
 | Resource | Progress fields |
 |---|---|
 | `predictions:structure-and-binding` | `status`; no per-item progress |
+| `predictions:adme` | `status`; results in `output.molecules[]` on success (no per-item progress) |
 | `small-molecule:library-screen` | `num_molecules_screened`, `num_molecules_failed`, `total_molecules_to_screen`, optional `rejection_summary` |
 | `small-molecule:design` | `num_molecules_generated`, `total_molecules_to_generate` |
 | `protein:library-screen` | `num_proteins_screened`, `num_proteins_failed`, `total_proteins_to_screen` |
@@ -93,6 +97,7 @@ boltz-api protein:design retrieve --id "<job-id>" --format json
 
 # If the prefix is unknown, probe explicitly one command at a time until one succeeds.
 boltz-api predictions:structure-and-binding retrieve --id "<job-id>" --format json
+boltz-api predictions:adme retrieve --id "<job-id>" --format json
 boltz-api small-molecule:library-screen retrieve --id "<job-id>" --format json
 boltz-api small-molecule:design retrieve --id "<job-id>" --format json
 boltz-api protein:library-screen retrieve --id "<job-id>" --format json
@@ -107,11 +112,11 @@ Failed SAB jobs may expose only:
 {"code": "VALIDATION_ERROR", "message": "Request validation failed"}
 ```
 
-with no `details`. The other four endpoints include field paths. If you see the bare message, inspect the `input.entities` and `input.constraints` by hand.
+with no `details`. The other endpoints include field paths. If you see the bare message, inspect the `input.entities` and `input.constraints` by hand.
 
 ## `list-results` mode (pipeline endpoints only)
 
-Applies to the four pipeline resources (not SAB, which has a single `output`):
+Applies to the four pipeline resources (not SAB or ADME, which return their full `output` on `retrieve`):
 
 ```bash
 boltz-api <resource> list-results --id "<job-id>" --limit 100
@@ -170,7 +175,7 @@ boltz-api download-results \
 
 Behavior:
 
-- `download-results` itself is a blocking poller. Launch it through the agent runtime's background/non-blocking command facility and immediately return to the user; do not wait on or poll the background session unless the user asks. In Claude Code, use Bash with `run_in_background: true`. In Codex, run it as a foreground shell command with `yield_time_ms=1000`; if Codex returns a session id, save it for optional later polling.
+- `download-results` itself is a blocking poller. Launch it through the agent runtime's background/non-blocking command facility. In Claude Code, use Bash with `run_in_background: true`. In Codex, run it as a foreground shell command with `yield_time_ms=1000`; if Codex returns a session id, save it for optional same-thread polling, but treat `download-status` plus the run directory as the durable source of truth. In Codex app/desktop runtimes with same-thread heartbeat automation support, schedule a heartbeat that checks `download-status` periodically, posts only material status changes or terminal completion/failure, and stops once terminal. If the current host has no heartbeat automation support, do not claim an automatic next check; report the job ID, run name, output directory, and `download-status` command instead.
 - It emits machine-readable JSONL progress events on stderr by default. Use `--progress-format text --verbose` only when you explicitly want human-readable logs.
 - Writes `<output-root>/<run-name>/.boltz-run.json` containing the cursor (`cursor_after_id`), status, idempotency key, and timing.
 - On re-run with the same `--root-dir` + `--name`, reuses `.boltz-run.json` and only pulls results past the recorded cursor. Idempotent.
@@ -190,7 +195,7 @@ Behavior:
     │   ├── archive.tar.gz
     │   └── files/result/
     │       ├── metrics.json
-    │       ├── predicted_structure.cif
+    │       ├── <pres_*>_predicted.cif
     │       └── pae.npz
     └── pres_...                           # one dir per per-item result, keyed by server ID
 ```

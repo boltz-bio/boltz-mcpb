@@ -12,6 +12,7 @@ export const workflowGuideIds = [
   "cli-setup",
   "check-status",
   "structure-and-binding",
+  "small-molecule-adme",
   "small-molecule-screen",
   "small-molecule-design",
   "protein-screen",
@@ -62,6 +63,17 @@ export const workflowGuides = [
     sequence: ["boltz_check_setup", "boltz_get_guidance", "boltz_structure_and_binding with start=false", "ask for cost confirmation", "boltz_structure_and_binding with start=true"]
   },
   {
+    id: "small-molecule-adme",
+    skillDir: "boltz-small-molecule-adme",
+    title: "Small-molecule ADME",
+    toolName: "boltz_small_molecule_adme",
+    resource: "predictions:adme",
+    prompt: "boltz_small_molecule_adme_workflow",
+    summary: "Predict Tier-1 ADME summary properties for small molecules.",
+    references: ["api", "results"],
+    sequence: ["boltz_check_setup", "boltz_get_guidance", "boltz_small_molecule_adme with start=false", "ask for cost confirmation", "boltz_small_molecule_adme with start=true", "boltz_job_status with resource predictions:adme to retrieve inline results"]
+  },
+  {
     id: "small-molecule-screen",
     skillDir: "boltz-small-molecule-screen",
     title: "Small-molecule screen",
@@ -108,12 +120,12 @@ export const workflowGuides = [
 ];
 
 export const serverInstructions = [
-  "Use Boltz tools for molecular structure prediction, binding prediction, small-molecule screening/design, and protein screening/design.",
+  "Use Boltz tools for molecular structure prediction, binding prediction, ADME property prediction, small-molecule screening/design, and protein screening/design.",
   "Before preparing or calling a paid workflow tool, call boltz_get_guidance for the matching workflow unless equivalent guidance is already visible in the conversation.",
   "For every workflow, check setup/auth first, build a valid Boltz API JSON payload, estimate with start=false, then ask the user before submitting with start=true.",
   "Do not invent missing biological inputs, sequences, ligands, libraries, workspace IDs, or payload fields. Ask for the missing information or explain the assumption before estimating.",
-  "Use a stable run_name as the idempotency key and download name. Prefer structured payload JSON; use payload_text only when exact raw JSON is required.",
-  "After a job starts, use auto_download when appropriate and use boltz_job_status or boltz_download_results to resume result retrieval."
+  "Use a stable run_name as the idempotency key and result tracking name. Prefer structured payload JSON; use payload_text only when exact raw JSON is required.",
+  "After a job starts, use auto_download when appropriate and use boltz_job_status or boltz_download_results to monitor downloaded results or retrieve inline results."
 ].join("\n");
 
 const guideById = new Map(workflowGuides.map((guide) => [guide.id, guide]));
@@ -208,7 +220,7 @@ export function workflowDescription(toolName) {
     "Before calling this tool for a new request, call boltz_get_guidance for this workflow unless the guide is already in context.",
     "The first call should normally use start=false to estimate cost. Only call again with start=true after the user confirms the estimate.",
     "The payload must be valid Boltz API JSON for this workflow. Ask for missing target, ligand, sequence, library, or design constraints instead of guessing.",
-    "Use run_name as a stable idempotency key and result-download name."
+    "Use run_name as a stable idempotency key and result tracking name."
   ].join(" ");
 }
 

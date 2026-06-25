@@ -108,11 +108,9 @@ modifications:
   - residue_index: 12      # 0-based
     type: ccd
     value: MSE
-  # or
-  - residue_index: 12
-    type: smiles
-    value: "C1=CC=CC=C1..."
 ```
+
+`type` must be `ccd` — SMILES polymer modifications are **not** supported (the API rejects them with `modifications[].type must be "ccd"`).
 
 ## `molecule_filters`
 
@@ -136,6 +134,8 @@ custom_filters:
     max_hba: 10
     allow_single_violation: true   # optional
 ```
+
+All four caps (`max_mw`, `max_logp`, `max_hbd`, `max_hba`) are **required together** — only `allow_single_violation` is optional. For a partial cap (e.g. MW + logP only), use `rdkit_descriptor_filter`, whose descriptor keys are independently optional; a partial `lipinski_filter` is rejected with a confusing union error.
 
 ### `rdkit_descriptor_filter`
 
@@ -190,7 +190,7 @@ Any molecule whose SMILES matches any regex is rejected.
 
 ## Cost
 
-Cost is quoted by `estimate-cost` on the exact payload. For small targets it is typically around $0.025 per submitted molecule, but filters applied pre-scoring can reduce the scored count and pricing can change; always report `estimated_cost_usd` from the response.
+Cost is a flat **$0.025 per scored molecule** (size-independent — the per-molecule rate does not change with target or molecule size). `estimate-cost` returns the authoritative total — always report `estimated_cost_usd`. Note: pre-scoring `molecule_filters` can reduce how many molecules are scored, which lowers the total (fewer units priced), but the per-molecule rate itself is fixed.
 
 ## Outputs (after `download-results`)
 
@@ -201,7 +201,7 @@ Under `<output-root>/<run-name>/`:
 - `results/index.jsonl` — one scored molecule per line, copied from list-results metadata plus local artifact paths
 - `results/<pres_*>/metadata.json` — per-result metadata copied from the list-results record
 - `results/<pres_*>/archive.tar.gz` — one dir per scored molecule
-- `results/<pres_*>/files/result/{metrics.json, predicted_structure.cif, pae.npz}`
+- `results/<pres_*>/files/result/{metrics.json, <result-id>_predicted.cif, pae.npz}` (the CIF is named `<pres_*>_predicted.cif` — prefer the `paths.structure` field from `index.jsonl` over hard-coding the filename)
 
 Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadata.json`, and the `list-results` stream):
 

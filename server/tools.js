@@ -101,7 +101,9 @@ export const toolDefinitions = [
     name,
     title: spec.title,
     description: [
-      `Estimate and optionally start a Boltz ${spec.title.toLowerCase()} workflow, then optionally download results.`,
+      spec.downloadResults === false
+        ? `Estimate and optionally start a Boltz ${spec.title.toLowerCase()} workflow, then retrieve inline results with boltz_job_status.`
+        : `Estimate and optionally start a Boltz ${spec.title.toLowerCase()} workflow, then optionally download results.`,
       workflowDescription(name)
     ].join(" "),
     annotations: {
@@ -151,6 +153,7 @@ export const toolDefinitions = [
       workspace_id: z.string().optional().describe("Optional Boltz workspace ID for remote retrieve calls."),
       resource: z.enum([
         "predictions:structure-and-binding",
+        "predictions:adme",
         "small-molecule:library-screen",
         "small-molecule:design",
         "protein:library-screen",

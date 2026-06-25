@@ -45,7 +45,7 @@ molecule_filters:
 
 Top-level fields:
 
-- `num_molecules` (required) — number to generate. **Minimum 10** (server rejects lower).
+- `num_molecules` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — protein target object (same shape as the screen endpoint).
 - `chemical_space` (optional) — generation space constraint. Currently `"enamine_real"` is the documented value. Omit for default.
 - `molecule_filters` (optional) — filter candidates before they're scored. Same schema as the screen endpoint.
@@ -57,11 +57,11 @@ Also passed as separate `start` flags:
 
 ## `num_molecules` minimum
 
-The server rejects `num_molecules < 10` with `VALIDATION_ERROR`. Validate client-side before submitting.
+The server rejects `num_molecules < 10` or `> 1000000` with `VALIDATION_ERROR`. Validate client-side before submitting.
 
 ## Cost
 
-Cost is quoted by `estimate-cost` on the exact payload. For small targets it is typically around $0.025 per requested molecule, but the API does not document a stable formula and pricing may scale with complex size. Always report `estimated_cost_usd` from the response rather than a hardcoded per-molecule rate.
+Cost is a flat **$0.025 per molecule** (size-independent — verified against `estimate-cost`: the per-unit rate does not change with target or molecule size). `estimate-cost` returns the authoritative total — always report `estimated_cost_usd`.
 
 ## `chemical_space`
 
@@ -105,11 +105,9 @@ modifications:
   - residue_index: 12         # 0-based
     type: ccd
     value: MSE
-  # or
-  - residue_index: 12
-    type: smiles
-    value: "C1=CC=CC=C1..."
 ```
+
+`type` must be `ccd` — SMILES polymer modifications are **not** supported (the API rejects them with `modifications[].type must be "ccd"`).
 
 ## `molecule_filters`
 
@@ -131,6 +129,8 @@ custom_filters:
     max_hba: 10
     allow_single_violation: true
 ```
+
+All four caps (`max_mw`, `max_logp`, `max_hbd`, `max_hba`) are **required together** — only `allow_single_violation` is optional. For a partial cap (e.g. MW + logP only), use `rdkit_descriptor_filter`, whose descriptor keys are independently optional; a partial `lipinski_filter` is rejected with a confusing union error.
 
 ### `rdkit_descriptor_filter`
 
@@ -186,7 +186,7 @@ Under `<output-root>/<run-name>/`:
 - `results/index.jsonl` — one generated candidate per line, copied from list-results metadata plus local artifact paths
 - `results/<pres_*>/metadata.json` — per-result metadata copied from the list-results record
 - `results/<pres_*>/archive.tar.gz` — one dir per generated candidate
-- `results/<pres_*>/files/result/{metrics.json, predicted_structure.cif, pae.npz}`
+- `results/<pres_*>/files/result/{metrics.json, <result-id>_predicted.cif, pae.npz}` (the CIF is named `<pres_*>_predicted.cif` — prefer the `paths.structure` field from `index.jsonl` over hard-coding the filename)
 
 Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadata.json`, and the `list-results` stream):
 
@@ -197,7 +197,9 @@ Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadat
 - `metrics.structure_confidence`
 - `metrics.complex_plddt`, `metrics.complex_iplddt`
 - `metrics.iptm`, `metrics.ptm`
+- `adme` — Tier-1 ADME triage returned **free** per generated molecule (sibling of `metrics`, not nested in it). Object with `solubility` (categorical: `high-confidence` / `medium-confidence` / `high-risk`), `permeability` (numeric score), and `lipophilicity` (numeric LogD). Approximate estimates for triage/ranking, not absolute measurements.
 - `artifacts.structure.url`, `artifacts.archive.url` (presigned, short-lived)
+- `warnings` — optional array of `{code, message}` quality flags (e.g. `low_confidence`, `unusual_geometry`); empty or absent on clean results. Surface them when presenting top hits.
 
 Rank from `results/index.jsonl` after `download-results`. `binding_confidence` and `optimization_score` are parallel intents (hit discovery vs. lead optimization), not a primary/fallback hierarchy. Sort by whichever matches the user's goal.
 

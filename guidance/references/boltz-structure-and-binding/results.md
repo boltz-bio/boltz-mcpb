@@ -20,6 +20,8 @@ Metrics in `metrics.json` are nested, not flat:
 - `ligand_protein_binding` binding metrics include `binding_confidence` and `optimization_score`.
 - `protein_protein_binding` binding metrics include `binding_confidence` only.
 
+`binding_confidence` (0–1) is the confidence that binding occurs — the primary signal for whether the complex binds. `optimization_score` ranks **binding strength** for lead optimization (higher = stronger predicted binding); it is emitted only for `ligand_protein_binding`.
+
 ## Validation Quirk
 
 If the server rejects the payload with only `{"code": "VALIDATION_ERROR","message":"Request validation failed"}` and no field-level details, inspect `entities`, `binding`, and `constraints` carefully. `predictions:structure-and-binding` currently omits detailed validation paths more often than the other endpoints.

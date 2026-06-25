@@ -53,6 +53,10 @@
       "description": "Estimate and optionally start one Boltz structure-and-binding job, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
     {
+      "name": "boltz_small_molecule_adme",
+      "description": "Estimate and optionally start one ADME prediction, then retrieve inline results with boltz_job_status. Estimate with start=false first and ask before start=true."
+    },
+    {
       "name": "boltz_small_molecule_screen",
       "description": "Estimate and optionally start one small-molecule library screen, then optionally launch result download. Estimate with start=false first and ask before start=true."
     },
@@ -80,7 +84,7 @@
   "prompts_generated": true,
   "keywords": [
     "boltz",
-    "boltz-compute",
+    "boltz-api",
     "computational-biology",
     "protein-design",
     "virtual-screening",

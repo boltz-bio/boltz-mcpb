@@ -104,6 +104,56 @@ test("workflow commands match the skills CLI shape", () => {
   ]);
 });
 
+test("prediction workflow commands pass model arguments", () => {
+  const structure = buildWorkflowCommands(workflowSpecs.boltz_structure_and_binding, {
+    run_name: "aspirin-check-v1",
+    inputRef: "@json:///tmp/payload.json",
+    output_root: "/tmp/boltz-results"
+  }, {
+    outputRoot: "/tmp/fallback",
+    defaultPollIntervalSeconds: 30
+  });
+
+  assert.deepEqual(structure.estimate.slice(0, 5), [
+    "predictions:structure-and-binding",
+    "estimate-cost",
+    "--model",
+    "boltz-2.1",
+    "--input"
+  ]);
+  assert.deepEqual(structure.start.slice(0, 4), [
+    "predictions:structure-and-binding",
+    "start",
+    "--model",
+    "boltz-2.1"
+  ]);
+
+  const adme = buildWorkflowCommands(workflowSpecs.boltz_small_molecule_adme, {
+    run_name: "adme-check-v1",
+    inputRef: "@json:///tmp/adme.json",
+    output_root: "/tmp/boltz-results"
+  }, {
+    outputRoot: "/tmp/fallback",
+    defaultPollIntervalSeconds: 30
+  });
+
+  assert.deepEqual(adme.estimate, [
+    "predictions:adme",
+    "estimate-cost",
+    "--model",
+    "adme-v1",
+    "--input",
+    "@json:///tmp/adme.json"
+  ]);
+  assert.deepEqual(adme.start.slice(0, 4), [
+    "predictions:adme",
+    "start",
+    "--model",
+    "adme-v1"
+  ]);
+  assert.equal(adme.download, null);
+});
+
 test("download command uses resume-friendly run name and root", () => {
   assert.deepEqual(buildDownloadArgs({
     id: "job_123",

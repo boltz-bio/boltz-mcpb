@@ -11,7 +11,7 @@ Under `<output-root>/<run-name>/`:
 - `results/index.jsonl` - one scored molecule per line, with `external_id`, `smiles`, `metrics`, a free `adme` block, and local `paths`
 - `results/<pres_*>/metadata.json` - per-result metadata copied from the list-results record
 - `results/<pres_*>/archive.tar.gz`
-- `results/<pres_*>/files/result/{metrics.json, predicted_structure.cif, pae.npz}`
+- `results/<pres_*>/files/result/{metrics.json, <pres_*>_predicted.cif, pae.npz}` (use the `paths.structure` field from `index.jsonl` rather than assuming a fixed CIF filename)
 
 Use `results/index.jsonl` as the authoritative local scored list after download. The extracted per-hit `metrics.json` files do not include input-library mapping fields.
 

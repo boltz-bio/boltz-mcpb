@@ -88,7 +88,7 @@ Per-molecule fields in `run.json` → `output.molecules[]`:
 - `external_id` — your input `id`
 - `smiles` — the scored SMILES
 - `status` — `succeeded` or `failed`
-- `error` — `null` on success; an error object (e.g. `invalid_smiles`) on failure
+- `error` — `null` on success; on failure an object `{code, message}` (e.g. `{"code": "adme_enumeration_failed", "message": "Invalid SMILES"}`)
 - `adme` — present on success:
   - `solubility` — categorical: `high-confidence`, `medium-confidence`, or `high-risk`
   - `permeability` — numeric score
@@ -98,7 +98,7 @@ ADME values are approximate estimates intended for triage and ranking, not absol
 
 ## Errors
 
-Failures are per-molecule, not per-batch: one invalid SMILES yields `status: "failed"` with an `error` (such as `invalid_smiles`) for that molecule while the rest succeed. Always check each molecule's `status` before reporting its `adme`.
+Failures are per-molecule, not per-batch: one invalid SMILES yields `status: "failed"` (with `adme: null`) and an `error` object `{code, message}` — e.g. `{"code": "adme_enumeration_failed", "message": "Invalid SMILES"}` — for that molecule while the rest succeed. Always check each molecule's `status` before reporting its `adme`.
 
 ## `start` + `retrieve` (async)
 

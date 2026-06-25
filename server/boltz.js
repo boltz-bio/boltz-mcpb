@@ -18,7 +18,14 @@ export const workflowSpecs = {
   boltz_structure_and_binding: {
     resource: "predictions:structure-and-binding",
     title: "Structure and binding",
+    model: "boltz-2.1",
     defaultPollIntervalSeconds: 10
+  },
+  boltz_small_molecule_adme: {
+    resource: "predictions:adme",
+    title: "Small-molecule ADME",
+    model: "adme-v1",
+    downloadResults: false
   },
   boltz_small_molecule_screen: {
     resource: "small-molecule:library-screen",
@@ -147,10 +154,12 @@ function sanitizeCommandArgs(args, config) {
 export function buildWorkflowCommands(spec, args, config) {
   const inputRef = args.inputRef;
   const workspaceArgs = args.workspace_id ? ["--workspace-id", args.workspace_id] : [];
-  const estimate = [spec.resource, "estimate-cost", "--input", inputRef, ...workspaceArgs];
+  const modelArgs = spec.model ? ["--model", spec.model] : [];
+  const estimate = [spec.resource, "estimate-cost", ...modelArgs, "--input", inputRef, ...workspaceArgs];
   const start = [
     spec.resource,
     "start",
+    ...modelArgs,
     "--idempotency-key",
     args.run_name,
     "--input",
@@ -160,13 +169,15 @@ export function buildWorkflowCommands(spec, args, config) {
     "id",
     ...workspaceArgs
   ];
-  const download = buildDownloadArgs({
-    id: "<job-id>",
-    run_name: args.run_name,
-    output_root: args.output_root || config.outputRoot,
-    poll_interval_seconds: resolvePollInterval(args, spec, config),
-    workspace_id: args.workspace_id
-  });
+  const download = spec.downloadResults === false
+    ? null
+    : buildDownloadArgs({
+      id: "<job-id>",
+      run_name: args.run_name,
+      output_root: args.output_root || config.outputRoot,
+      poll_interval_seconds: resolvePollInterval(args, spec, config),
+      workspace_id: args.workspace_id
+    });
   return { estimate, start, download };
 }
 
@@ -438,7 +449,7 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
 
   const jobId = start.stdout.trim();
   let downloader = null;
-  if (args.auto_download !== false) {
+  if (args.auto_download !== false && spec.downloadResults !== false) {
     downloader = await startDownloadProcess({
       id: jobId,
       run_name: args.run_name,
@@ -458,7 +469,10 @@ export async function runWorkflow(toolName, args, config = getConfig()) {
     estimate: sanitizeCommandResult(estimate, config),
     start: sanitizeCommandResult(start, config),
     started: true,
-    downloader
+    downloader,
+    next_step: spec.downloadResults === false
+      ? `Use boltz_job_status with id ${jobId} and resource ${spec.resource} to retrieve inline results.`
+      : "Use boltz_job_status or boltz_download_results to monitor result download."
   };
 }
 

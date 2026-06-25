@@ -24,6 +24,8 @@ Claude Desktop, so no separate runtime is needed.
 - `boltz_auth_login` — start Boltz sign-in via a Boltz-owned auth link.
 - `boltz_structure_and_binding` — estimate and optionally start a
   structure-and-binding job, then optionally download results.
+- `boltz_small_molecule_adme` — estimate and optionally start an ADME
+  prediction, then retrieve inline results.
 - `boltz_small_molecule_screen` — small-molecule library screen.
 - `boltz_small_molecule_design` — small-molecule design.
 - `boltz_protein_screen` — protein-family screen.
@@ -55,7 +57,7 @@ the tool inputs needed to run the requested workflow.
 
 - Issues and feature requests:
   [github.com/boltz-bio/boltz-mcpb/issues](https://github.com/boltz-bio/boltz-mcpb/issues)
-- Documentation: https://docs.boltz.bio
+- Documentation: https://api.boltz.bio/docs
 
 ## Development
 
