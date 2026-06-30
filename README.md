@@ -2,7 +2,8 @@
 
 The Boltz Model Context Protocol (MCP) server, packaged as a Claude Desktop
 extension. Predict protein structures and ligand binding, screen
-small-molecule and protein libraries, and design novel binders — all from a
+small-molecule and protein libraries, predict small-molecule ADME properties,
+and design novel binders — all from a
 natural-language conversation in Claude Desktop.
 
 ## Install
