@@ -61,7 +61,7 @@ The server rejects `num_molecules < 10` or `> 1000000` with `VALIDATION_ERROR`. 
 
 ## Cost
 
-Cost is a flat **$0.025 per molecule** (size-independent — verified against `estimate-cost`: the per-unit rate does not change with target or molecule size). `estimate-cost` returns the authoritative total — always report `estimated_cost_usd`.
+Small-molecule design cost includes both Boltz2 scoring work and SynFlowNet generation overhead, so there is no fixed standalone per-molecule formula to cite. `estimate-cost` returns the authoritative total and a blended `cost_per_unit_usd` for the submitted payload — always report `estimated_cost_usd` from that response.
 
 ## `chemical_space`
 
