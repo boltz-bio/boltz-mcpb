@@ -21,7 +21,6 @@ Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear ins
 - [`binder_specification` — variant 1: `boltz_curated`](#binder_specification--variant-1-boltz_curated)
 - [`binder_specification` — variant 2: `structure_template`](#binder_specification--variant-2-structure_template)
 - [`binder_specification` — variant 3: `no_template`](#binder_specification--variant-3-no_template)
-- [`binder_specification` — variant 4: `uniformly_sampled_specifications`](#binder_specification--variant-4-uniformly_sampled_specifications)
 - [Sequence DSL (`designed_protein.value`)](#sequence-dsl-designed_proteinvalue)
 - [`rules`](#rules)
 - [`target` — variant 1: `structure_template`](#target--variant-1-structure_template)
@@ -57,7 +56,7 @@ Top-level fields:
 
 - `num_proteins` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — discriminated union: `structure_template` or `no_template`. Identical shape to protein-screen.
-- `binder_specification` (required) — discriminated union: `boltz_curated`, `structure_template`, `no_template`, or `uniformly_sampled_specifications`. See below.
+- `binder_specification` (required) — discriminated union: `boltz_curated`, `structure_template`, or `no_template`. See below.
 
 Also passed as separate `start` flags:
 
@@ -199,24 +198,6 @@ Allowed entity types in `binder_specification.entities` (for `no_template`):
 - `protein`, `rna`, `dna` — fixed partners
 - `ligand_smiles`, `ligand_ccd` — fixed cofactors
 
-## `binder_specification` — variant 4: `uniformly_sampled_specifications`
-
-Use this wrapper when one run should compare multiple concrete binder definitions. The service samples one entry per generation; across a larger run this gives roughly equal representation. Provide 1–50 entries in `binder_specifications`. Each entry must be a concrete `boltz_curated`, `structure_template`, or `no_template` specification — uniform samplers cannot be nested.
-
-```yaml
-binder_specification:
-  type: uniformly_sampled_specifications
-  binder_specifications:
-    - type: no_template
-      modality: custom_protein
-      entities:
-        - type: designed_protein
-          chain_ids: [B]
-          value: "20"
-    - type: boltz_curated
-      binder: boltz_nanobody
-```
-
 ## Sequence DSL (`designed_protein.value`)
 
 - Uppercase amino acid letters stay fixed.
@@ -232,7 +213,7 @@ Examples:
 
 ## `rules`
 
-Optional, applies to the three concrete `binder_specification` variants. For `uniformly_sampled_specifications`, put `rules` on each entry. Any of:
+Optional, applies to all `binder_specification` variants. Any of:
 
 - `excluded_amino_acids: [<one-letter codes>]` — never emit these residues in designed positions.
 - `excluded_sequence_motifs: [<motif strings>]` — reject designs containing these patterns. Use `X` as a single-position wildcard (e.g. `"XPX"`).

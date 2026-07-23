@@ -13,9 +13,9 @@ Use this skill when the user wants de novo small-molecule binders (no existing l
 
 1. Normalize the target: one or more protein sequences into `target.entities`, plus optional `pocket_residues` (0-based) and/or `reference_ligands` (known binders to help locate the pocket).
 2. Pick `num_molecules` — valid range **10 to 1,000,000** (server rejects outside it). If the user says fewer than 10, explain the floor and propose 10.
-3. Only add `chemical_space` if the user explicitly wants a generation mode: use `"enamine_real"` for synthesizable molecules within that library, or `"none"` to disable chemical-space filtering.
+3. Only add `chemical_space` (e.g. `"enamine_real"`) if the user explicitly wants generation restricted to synthesizable molecules within that library.
 4. Supported optional features include `chemical_space` and `molecule_filters`; only add them on explicit request. Read [references/api.md](references/api.md) for exact shapes and filter options.
-5. Author the payload YAML or JSON, run `estimate-cost`, show the USD cost, wait for explicit confirmation. Small-molecule design pricing includes scoring plus generation overhead, so do not use a hardcoded per-molecule formula; quote `estimated_cost_usd` from the response as the authoritative total.
+5. Author the payload YAML or JSON, run `estimate-cost`, show the USD cost, wait for explicit confirmation. Cost is a flat $0.025 per molecule (size-independent); still quote `estimated_cost_usd` from the response as the authoritative total.
 6. `start` to submit (synchronous). Capture the ID.
 7. Launch `download-results` with the agent runtime's background/non-blocking command facility; it polls, paginates, downloads per-hit structures, and exits when terminal. In Claude Code, use Bash with `run_in_background: true`. In Codex, run `download-results` as a foreground shell command with `yield_time_ms: 1000`; if Codex returns a `session_id`, keep it for optional same-thread polling, but treat `download-status` plus the run directory as the durable source of truth. In Codex app/desktop runtimes that expose same-thread heartbeat automations, create a heartbeat that checks `download-status` periodically and posts a concise completion or failure update when the download reaches a terminal state. After launching the downloader, always report the job ID, run name, and output directory. Include the next check cadence if the heartbeat was created; otherwise include the `download-status` command.
 8. Rank hits from `<output-root>/<run-name>/results/index.jsonl` by `binding_confidence` for hit discovery or `optimization_score` for lead optimization. Each generated molecule also carries a free `adme` block (`solubility`, `permeability`, `lipophilicity`) — surface it for developability triage when the user cares about ADME, or when a top hit looks risky. Read [references/results.md](references/results.md) for output layout and metric details.
@@ -51,7 +51,7 @@ Payload keys are `num_molecules`, `target`, `chemical_space`, `molecule_filters`
 ## Always Do This
 
 - Enforce `10 <= num_molecules <= 1,000,000` before calling `estimate-cost`. The server rejects values outside that range.
-- Small-molecule design pricing includes scoring plus generation overhead. `estimate-cost` returns the authoritative total; do not compute or state a hardcoded per-molecule price yourself.
+- Cost is a flat $0.025 per molecule (size-independent). `estimate-cost` returns the authoritative total.
 - Treat pocket residue indices as 0-based.
 - Keep payload field names exactly as the API body names shown in `references/api.md`.
 - Use absolute paths for the output root, payload files, and embedded target files. Do not `cd` into the run directory for follow-up commands; pass the same `--root-dir` and use absolute paths so later relative paths do not drift.
