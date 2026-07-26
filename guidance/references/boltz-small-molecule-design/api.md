@@ -47,7 +47,7 @@ Top-level fields:
 
 - `num_molecules` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — protein target object (same shape as the screen endpoint).
-- `chemical_space` (optional) — generation space constraint. Currently `"enamine_real"` is the documented value. Omit for default.
+- `chemical_space` (optional) — generation space constraint. Use `"enamine_real"` for the Enamine REAL library or `"none"` to disable chemical-space filtering. Omit for the default `"enamine_real"` behavior.
 - `molecule_filters` (optional) — filter candidates before they're scored. Same schema as the screen endpoint.
 
 Also passed as separate `start` flags:
@@ -61,11 +61,11 @@ The server rejects `num_molecules < 10` or `> 1000000` with `VALIDATION_ERROR`. 
 
 ## Cost
 
-Cost is a flat **$0.025 per molecule** (size-independent — verified against `estimate-cost`: the per-unit rate does not change with target or molecule size). `estimate-cost` returns the authoritative total — always report `estimated_cost_usd`.
+Small-molecule design cost includes both Boltz2 scoring work and SynFlowNet generation overhead, so there is no fixed standalone per-molecule formula to cite. `estimate-cost` returns the authoritative total and a blended `cost_per_unit_usd` for the submitted payload — always report `estimated_cost_usd` from that response.
 
 ## `chemical_space`
 
-Optional. Documented value: `"enamine_real"` — restricts generation to synthesizable molecules from the Enamine REAL library. Omit unless the user explicitly wants this.
+Optional. Supported values are `"enamine_real"` (restrict generation to synthesizable molecules from the Enamine REAL library) and `"none"` (disable chemical-space filtering). Omit unless the user explicitly wants one of these modes.
 
 ## `target`
 
