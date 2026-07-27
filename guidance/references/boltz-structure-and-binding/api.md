@@ -172,7 +172,7 @@ bonds:
 Atom variants:
 
 - `{type: polymer_atom, chain_id, residue_index, atom_name}` — residue_index is 0-based.
-- `{type: ligand_atom, chain_id, atom_name}`. **Atom-level ligand references support `ligand_ccd` only** — referencing a `ligand_smiles` chain by atom is rejected (`bad_request: … references SMILES ligand chain … Use ligand_ccd instead`). Use a `ligand_ccd` entity for any atom-level bond/contact.
+- `{type: ligand_atom, chain_id, atom_name}`. Atom-level ligand references support CCD atom names and explicitly atom-mapped SMILES atoms. For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
 
 ## `constraints`
 
@@ -208,7 +208,7 @@ constraints:
 Token variants:
 
 - `{type: polymer_contact, chain_id, residue_index}` — residue_index is 0-based.
-- `{type: ligand_contact, chain_id, atom_name}`. As with bonds, atom-level ligand contacts support `ligand_ccd` only — `ligand_smiles` chains cannot be referenced by atom.
+- `{type: ligand_contact, chain_id, atom_name}`. As with bonds, atom-level ligand contacts support CCD atom names and explicitly atom-mapped SMILES atoms. For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
 
 ## `model_options`
 

@@ -234,7 +234,7 @@ constraints:
 
 Token variants: `polymer_contact {chain_id, residue_index}` or `ligand_contact {chain_id, atom_name}`.
 
-**Atom-level ligand references (bonds and `ligand_contact`) support `ligand_ccd` only** — a `ligand_smiles` chain referenced by atom is rejected; use a `ligand_ccd` entity instead.
+**Atom-level ligand references (bonds and `ligand_contact`) support CCD atom names and explicitly atom-mapped SMILES atoms.** For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
 
 ## Cost
 
