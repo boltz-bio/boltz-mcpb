@@ -90,8 +90,9 @@ Supported entity types inside `proteins[].entities`:
 - `dna`
 - `ligand_smiles`
 - `ligand_ccd`
+- `glycan`
 
-Entity fields: `type`, `value`, `chain_ids`, `modifications` (optional), `cyclic` (optional bool).
+Non-glycan entity fields are `type`, `value`, `chain_ids`, `modifications` (optional), and `cyclic` (optional bool). Glycan entities use `type`, `chain_ids`, `residues`, and `bonds` to describe a graph of CCD monosaccharide residues.
 
 Each `proteins[]` entry may also include an optional client-side `id`. The server echoes it as `external_id` on the corresponding result; use it to map ranked hits back to FASTA records, CSV rows, or library IDs.
 
@@ -160,7 +161,7 @@ All residue indices are 0-based.
 
 ## `target` — variant 2: `no_template`
 
-Use when the user has only sequences.
+Use when the user has only sequences or explicit glycan graphs.
 
 ```yaml
 target:

@@ -40,7 +40,7 @@ model_options:
 
 Top-level fields:
 
-- `entities` (required) — list of polymer / ligand entities. Chain IDs across entities must be unique.
+- `entities` (required) — list of polymer, ligand, or glycan entities. Chain IDs across entities must be unique.
 - `binding` (optional) — include only when you want binding metrics. Two variants below.
 - `num_samples` (optional, 1-10) — structure samples to generate. Omit for the server default.
 - `bonds` (optional) — custom covalent bonds; see below.
@@ -56,7 +56,7 @@ Also passed as separate `start` flags, not inside the body:
 
 ## Entity types
 
-All entities take `type`, `chain_ids`, `value`.
+All non-glycan entities take `type`, `chain_ids`, and `value`. Glycans use an explicit graph of CCD monosaccharide residues instead of `value`.
 
 ### `protein`
 
@@ -105,6 +105,29 @@ All entities take `type`, `chain_ids`, `value`.
   value: ATP
 ```
 
+### `glycan`
+
+Glycans are explicit graphs of CCD monosaccharide residues. Residue IDs are request-local and are used by the edges in `bonds`.
+
+```yaml
+- type: glycan
+  chain_ids: [G]
+  residues:
+    - id: root
+      ccd: NAG
+    - id: branch
+      ccd: BMA
+  bonds:
+    - atom1:
+        residue_id: root
+        atom_id: C1
+      atom2:
+        residue_id: branch
+        atom_id: O4
+```
+
+A single-residue glycan uses an empty `bonds` array. Glycan chains cannot be referenced by contact or pocket constraints and cannot be used with binding metrics.
+
 ### Polymer modifications
 
 Each entry in `modifications`:
@@ -135,6 +158,7 @@ Constraints:
 - `binder_chain_id` must reference a single ligand chain.
 - Binder ligand must have fewer than 50 atoms.
 - The entity set may only contain proteins and ligands (no RNA / DNA).
+- Glycan chains are not supported by binding metrics.
 
 ### Protein–protein
 
@@ -172,7 +196,9 @@ bonds:
 Atom variants:
 
 - `{type: polymer_atom, chain_id, residue_index, atom_name}` — residue_index is 0-based.
-- `{type: ligand_atom, chain_id, atom_name}`. Atom-level ligand references support CCD atom names and explicitly atom-mapped SMILES atoms. For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
+- `{type: ccd_atom, chain_id, residue_id, atom_id}` — reference a specific CCD residue in a glycan graph.
+- `{type: smiles_atom, chain_id, atom_map}` — reference an explicit numeric atom-map in a SMILES ligand.
+- `{type: ligand_atom, chain_id, atom_name}` — use standardized CCD atom names or explicitly mapped SMILES atom names. Glycan attachments use `ccd_atom`; edges within a glycan belong in its `bonds` array.
 
 ## `constraints`
 
@@ -209,6 +235,8 @@ Token variants:
 
 - `{type: polymer_contact, chain_id, residue_index}` — residue_index is 0-based.
 - `{type: ligand_contact, chain_id, atom_name}`. As with bonds, atom-level ligand contacts support CCD atom names and explicitly atom-mapped SMILES atoms. For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
+
+Glycan chains cannot be referenced by contact or pocket constraints.
 
 ## `model_options`
 

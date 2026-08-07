@@ -198,6 +198,7 @@ Allowed entity types in `binder_specification.entities` (for `no_template`):
 - `designed_protein` — the sequence DSL target
 - `protein`, `rna`, `dna` — fixed partners
 - `ligand_smiles`, `ligand_ccd` — fixed cofactors
+- `glycan` — fixed glycan graph
 
 ## `binder_specification` — variant 4: `uniformly_sampled_specifications`
 

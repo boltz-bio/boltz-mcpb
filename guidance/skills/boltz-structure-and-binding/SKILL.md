@@ -1,6 +1,6 @@
 ---
 name: boltz-structure-and-binding
-description: Predict structures and binding for one defined complex with Boltz. Use when folding a protein, RNA, DNA, or ligand complex, docking one ligand, predicting an interface, or scoring binding. Not for screening libraries or design.
+description: Predict structures and binding for one defined complex with Boltz. Use when folding a protein, RNA, DNA, ligand, or glycan complex, docking one ligand, predicting an interface, or scoring binding. Not for screening libraries or design.
 ---
 
 ## Workflow
@@ -17,7 +17,7 @@ Use this skill for one defined complex, not a library workflow.
    {"entities": [{"type": "protein", "chain_ids": ["A"], "value": "MKTAYIAKQRQISFVKSHFSRQ"}]}
    ```
 
-   `type` is one of `protein | rna | dna | ligand_smiles | ligand_ccd`. Chain IDs go in entity order (`A`, `B`, `C`, …) unless the user specifies otherwise. Read `references/api.md` for per-type field variants (`cyclic`, `modifications`, ligand CCD codes, etc.) **before** authoring your first payload — agent guesses like `sequence:` or `chain_id: "A"` (singular) fail with unclear 400 errors.
+   `type` is one of `protein | rna | dna | ligand_smiles | ligand_ccd | glycan`. Chain IDs go in entity order (`A`, `B`, `C`, …) unless the user specifies otherwise. Read `references/api.md` for per-type field variants (`cyclic`, `modifications`, ligand CCD codes, glycan residues and bonds, etc.) **before** authoring your first payload — agent guesses like `sequence:` or `chain_id: "A"` (singular) fail with unclear 400 errors.
 2. If the user wants binding metrics, add a flat `binding` block with an explicit `type` field. For ligand-protein binding use:
 
    ```yaml
