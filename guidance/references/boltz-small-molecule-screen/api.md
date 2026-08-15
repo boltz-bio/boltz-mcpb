@@ -72,7 +72,7 @@ Fields:
 
 ## `target`
 
-Only `protein` entities are supported in the screen target.
+Screen targets accept `protein` and `glycan` entities, with at least one `protein` entity required.
 
 ```yaml
 target:

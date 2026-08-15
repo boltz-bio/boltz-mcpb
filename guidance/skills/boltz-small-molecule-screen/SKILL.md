@@ -12,7 +12,7 @@ If the agent host sandbox blocks `boltz-api` install/auth/API calls, use `boltz-
 Use this skill when the user already has candidate molecules.
 
 1. Normalize the library from raw SMILES, a CSV (auto-detect the SMILES column), `.smi`, or `.txt` into the `molecules` list. Each entry is `{smiles, id?}`; the optional `id` is echoed back as `external_id` on each result.
-2. Normalize the target: one or more protein sequences into `target.entities`, plus optional `pocket_residues` (0-based) and/or `reference_ligands` (SMILES of known binders to help locate the pocket).
+2. Normalize the target: one or more protein sequence entities, optionally with glycan entities in `target.entities`; at least one protein entity is required. Add optional `pocket_residues` (0-based) and/or `reference_ligands` (SMILES of known binders to help locate the pocket).
 3. Keep default server-side filtering unless the user asks for custom filters — only add `molecule_filters` on explicit request.
 4. Author the payload YAML or JSON, run `estimate-cost`, show the USD cost, wait for explicit confirmation.
 5. `start` to submit (synchronous). Capture the ID.

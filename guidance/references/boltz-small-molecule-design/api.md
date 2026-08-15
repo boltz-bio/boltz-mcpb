@@ -69,7 +69,7 @@ Optional. Supported values are `"enamine_real"` (restrict generation to synthesi
 
 ## `target`
 
-Identical shape to `small-molecule:library-screen`. Only protein entities are supported.
+Identical shape to `small-molecule:library-screen`. Target entities may be proteins or glycans; include at least one protein entity.
 
 ```yaml
 target:
