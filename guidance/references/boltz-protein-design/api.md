@@ -11,11 +11,12 @@ boltz-api protein:design start --idempotency-key "<run-name>" --input @yaml:///a
 
 In permission-gated agents, keep the submit command as a top-level `boltz-api ... start` invocation. Read the printed job ID from stdout and paste it into the later `download-results` command.
 
-Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear inside `--input`, the top-level flags win. Direct object flags still work as overrides, such as `--target @yaml:///absolute/path/target.yaml` or `--binder-specification @json:///absolute/path/binder.json`. Piped YAML / JSON on stdin remains supported when you need it, but the body must use API field names.
+Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear inside `--input`, the top-level flags win. For a type-discriminated request, keep the complete mode in `--input`; the legacy direct object flags (`--target` and `--binder-specification`) remain available for migration. Piped YAML / JSON on stdin remains supported when you need it, but the body must use API field names.
 
 ## Contents
 
-- [Top-level request](#top-level-request)
+- [Type-discriminated request](#type-discriminated-request)
+- [Legacy request (migration only)](#legacy-request-migration-only)
 - [`num_proteins` minimum](#num_proteins-minimum)
 - [Cost](#cost)
 - [`binder_specification` — variant 1: `boltz_curated`](#binder_specification--variant-1-boltz_curated)
@@ -30,7 +31,74 @@ Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear ins
 - [Outputs (after `download-results`)](#outputs-after-download-results)
 - [Escape hatch](#escape-hatch)
 
-## Top-level request
+## Type-discriminated request
+
+New requests must use one of the two top-level modes. The CLI `--input` is the
+API body (it is not an HTTP envelope).
+
+### Binder mode
+
+Use `type: binder` for a target-binding design. `target.entities` contains
+fixed target entities, while `binder` is either a single custom specification,
+a curated Boltz family, or a uniformly sampled set of specifications.
+
+```yaml
+type: binder
+num_proteins: 10
+templates:
+  - id: target
+    type: url
+    url: "https://example.com/target.cif"
+target:
+  entities:
+    - type: from_template
+      template_id: target
+      chain_id: A
+      crop_residues: all
+binder:
+  type: single
+  modality: nanobody             # peptide | antibody | nanobody | custom_protein
+  entities:
+    - type: no_template
+      entity:
+        type: designed_protein
+        chain_ids: [B]
+        value: "20"
+```
+
+For a Boltz-maintained antibody or nanobody family, use
+`binder: {type: boltz_curated, binder: boltz_nanobody}` (or
+`boltz_antibody`) instead of a `single` specification. To compare multiple
+definitions in one run, use `type: uniformly_sampled` with 1–50
+`specifications`; each entry is a `single` specification or a curated family.
+
+### Generic mode
+
+Use `type: generic` when there is no binding target. It requires at least one
+designed entity and can include top-level `bonds`.
+
+```yaml
+type: generic
+num_proteins: 10
+templates: []
+entities:
+  - type: no_template
+    entity:
+      type: designed_protein
+      chain_ids: [A]
+      value: "20"
+```
+
+Both modes also accept optional `global_design_filters`. Template entities use
+`type: from_template` and reference a request-local template by `template_id`;
+template-free entities use `type: no_template`. See the sections below for
+entity, motif, bond, and sequence details.
+
+## Legacy request (migration only)
+
+The following `target` + `binder_specification` body remains accepted for
+migration, but it is deprecated. New integrations must use the
+type-discriminated request above.
 
 ```yaml
 # payload.yaml
@@ -53,7 +121,7 @@ binder_specification:
     max_hydrophobic_fraction: 0.5
 ```
 
-Top-level fields:
+Legacy top-level fields:
 
 - `num_proteins` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — discriminated union: `structure_template` or `no_template`. Identical shape to protein-screen.
