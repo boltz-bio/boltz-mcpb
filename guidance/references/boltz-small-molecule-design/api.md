@@ -47,7 +47,7 @@ Top-level fields:
 
 - `num_molecules` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — protein target object (same shape as the screen endpoint).
-- `chemical_space` (optional) — generation space constraint. Use `"enamine_real"` for the Enamine REAL library or `"none"` to disable chemical-space filtering. Omit for the default `"enamine_real"` behavior.
+- `chemical_space` (optional) — generation space constraint. Use `"enamine_real"` for the Enamine REAL library, `"wuxi_galaxi"` for the WuXi GalaXi space when enabled for your organization, or `"none"` to disable chemical-space filtering. Omit for the default `"enamine_real"` behavior.
 - `molecule_filters` (optional) — filter candidates before they're scored. Same schema as the screen endpoint.
 
 Also passed as separate `start` flags:
@@ -65,7 +65,7 @@ Small-molecule design cost includes both Boltz2 scoring work and SynFlowNet gene
 
 ## `chemical_space`
 
-Optional. Supported values are `"enamine_real"` (restrict generation to synthesizable molecules from the Enamine REAL library) and `"none"` (disable chemical-space filtering). Omit unless the user explicitly wants one of these modes.
+Optional. Supported values are `"enamine_real"` (restrict generation to synthesizable molecules from the Enamine REAL library), `"wuxi_galaxi"` (use the WuXi GalaXi space when enabled for your organization), and `"none"` (disable chemical-space filtering). Omit unless the user explicitly wants one of these modes.
 
 ## `target`
 

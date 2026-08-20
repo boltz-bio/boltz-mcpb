@@ -13,7 +13,7 @@ Use this skill when the user wants de novo small-molecule binders (no existing l
 
 1. Normalize the target: one or more protein sequence entities, optionally with glycan entities in `target.entities`; at least one protein entity is required. Add optional `pocket_residues` (0-based) and/or `reference_ligands` (known binders to help locate the pocket).
 2. Pick `num_molecules` — valid range **10 to 1,000,000** (server rejects outside it). If the user says fewer than 10, explain the floor and propose 10.
-3. Only add `chemical_space` if the user explicitly requests a generation mode: use `"enamine_real"` to restrict generation to synthesizable molecules within that library, or `"none"` to disable chemical-space filtering.
+3. Only add `chemical_space` if the user explicitly requests a generation mode: use `"enamine_real"` to restrict generation to synthesizable molecules within that library, `"wuxi_galaxi"` for the WuXi GalaXi space when enabled for the organization, or `"none"` to disable chemical-space filtering.
 4. Supported optional features include `chemical_space` and `molecule_filters`; only add them on explicit request. Read [references/api.md](references/api.md) for exact shapes and filter options.
 5. Author the payload YAML or JSON, run `estimate-cost`, show the USD cost, wait for explicit confirmation. Small-molecule design pricing includes scoring plus generation overhead, so do not use a hardcoded per-molecule formula; quote `estimated_cost_usd` from the response as the authoritative total.
 6. `start` to submit (synchronous). Capture the ID.
