@@ -56,7 +56,6 @@ target:
       chain_id: A
       crop_residues: all
 binder:
-  type: single
   modality: nanobody             # peptide | antibody | nanobody | custom_protein
   entities:
     - type: no_template
@@ -68,9 +67,10 @@ binder:
 
 For a Boltz-maintained antibody or nanobody family, use
 `binder: {type: boltz_curated, binder: boltz_nanobody}` (or
-`boltz_antibody`) instead of a `single` specification. To compare multiple
+`boltz_antibody`) instead of a custom specification. To compare multiple
 definitions in one run, use `type: uniformly_sampled` with 1–50
-`specifications`; each entry is a `single` specification or a curated family.
+`specifications`; each entry is an untagged custom specification or a curated
+family.
 
 ### Generic mode
 
