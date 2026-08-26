@@ -1,13 +1,15 @@
 # Check Status — Reference
 
-This skill covers all six Boltz resources via `list` and `retrieve`; the five non-ADME resources also support `download-results`:
+This skill covers all eight result-bearing Boltz resources. Seven support `list` and `retrieve`; small-molecule exploration supports `retrieve` only. The five archive-producing prediction and pipeline resources plus ADME support `download-results`; ADME persists inline output without an archive, while sequence redesign and exploration use `list-results` instead:
 
 - `predictions:structure-and-binding`
-- `predictions:adme` — `list` / `retrieve` only (no `download-results`; results in `output.molecules[]`)
+- `predictions:adme` — `list` / `retrieve` / `download-results` (inline output only; no archive; results in `output.molecules[]`)
 - `small-molecule:library-screen`
 - `small-molecule:design`
+- `small-molecule:explore` — `retrieve` / `list-results` only (no `list` or `download-results`)
 - `protein:library-screen`
 - `protein:design`
+- `protein:sequence-redesign` — `list` / `retrieve` / `list-results` only (no `download-results`)
 
 This reference tracks the current CLI surface: unified `--id`, merged-input design/screen commands, `download-results`, and `download-status`. Treat `boltz-api --version` and the CLI's own help as the source of truth for command/flag specifics.
 
@@ -42,8 +44,10 @@ Common columns across resources:
   - `adme_pred_*` → `predictions:adme`
   - `prot_des_*` → `protein:design`
   - `prot_scr_*` → `protein:library-screen`
+  - `prot_seq_redes_*` → `protein:sequence-redesign`
   - `sm_des_*` → `small-molecule:design`
   - `sm_scr_*` → `small-molecule:library-screen`
+  - `sm_exp_*` → `small-molecule:explore`
 - `status` — `pending` / `running` / `succeeded` / `failed` / `stopped`
 - `created_at`, `started_at`, `completed_at`
 - `idempotency_key` — captured from `start`; the slug you can use as `--name` for resume
@@ -59,6 +63,7 @@ boltz-api predictions:structure-and-binding list --limit 20 --format jsonl | hea
 boltz-api predictions:adme list --limit 20 --format jsonl | head -20
 boltz-api small-molecule:library-screen list --limit 20 --format jsonl | head -20
 boltz-api small-molecule:design list --limit 20 --format jsonl | head -20
+boltz-api protein:sequence-redesign list --limit 20 --format jsonl | head -20
 boltz-api protein:library-screen list --limit 20 --format jsonl | head -20
 boltz-api protein:design list --limit 20 --format jsonl | head -20
 ```
@@ -86,8 +91,10 @@ Returns the full job record. Key fields:
 | `predictions:adme` | `status`; results in `output.molecules[]` on success (no per-item progress) |
 | `small-molecule:library-screen` | `num_molecules_screened`, `num_molecules_failed`, `total_molecules_to_screen`, optional `rejection_summary` |
 | `small-molecule:design` | `num_molecules_generated`, `total_molecules_to_generate` |
+| `small-molecule:explore` | `num_molecules_scored`, `total_molecules_to_score`, `num_molecules_failed`, optional `library_size` and `rejection_summary` |
 | `protein:library-screen` | `num_proteins_screened`, `num_proteins_failed`, `total_proteins_to_screen` |
 | `protein:design` | `num_proteins_generated`, `total_proteins_to_generate` |
+| `protein:sequence-redesign` | `num_proteins_generated`, `total_proteins_to_generate` |
 
 ### Route from the ID prefix when possible
 
@@ -100,6 +107,8 @@ boltz-api predictions:structure-and-binding retrieve --id "<job-id>" --format js
 boltz-api predictions:adme retrieve --id "<job-id>" --format json
 boltz-api small-molecule:library-screen retrieve --id "<job-id>" --format json
 boltz-api small-molecule:design retrieve --id "<job-id>" --format json
+boltz-api small-molecule:explore retrieve --id "<job-id>"
+boltz-api protein:sequence-redesign retrieve --id "<job-id>"
 boltz-api protein:library-screen retrieve --id "<job-id>" --format json
 boltz-api protein:design retrieve --id "<job-id>" --format json
 ```
@@ -116,7 +125,7 @@ with no `details`. The other endpoints include field paths. If you see the bare 
 
 ## `list-results` mode (pipeline endpoints only)
 
-Applies to the four pipeline resources (not SAB or ADME, which return their full `output` on `retrieve`):
+Applies to the six pipeline resources (not SAB or ADME, which return their full `output` on `retrieve`):
 
 ```bash
 boltz-api <resource> list-results --id "<job-id>" --limit 100
