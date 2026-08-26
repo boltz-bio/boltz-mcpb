@@ -28,6 +28,7 @@ Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear ins
 - [`target` — variant 1: `structure_template`](#target--variant-1-structure_template)
 - [`target` — variant 2: `no_template`](#target--variant-2-no_template)
 - [`bonds` and `constraints` shapes](#bonds-and-constraints-shapes)
+- [Fusion proteins](#fusion-proteins)
 - [Outputs (after `download-results`)](#outputs-after-download-results)
 - [Escape hatch](#escape-hatch)
 
@@ -91,8 +92,41 @@ entities:
 
 Both modes also accept optional `global_design_filters`. Template entities use
 `type: from_template` and reference a request-local template by `template_id`;
-template-free entities use `type: no_template`. See the sections below for
-entity, motif, bond, and sequence details.
+template-free entities use `type: no_template`. Omit `global_design_filters` to
+keep the default `excluded_amino_acids: ["C"]`; pass `[]` to disable it.
+`design_motifs[].filters` can add constraints to individual motifs. See the
+sections below for entity, motif, bond, and sequence details.
+
+#### Fusion proteins
+
+Within a generic request, use `type: fusion_protein` to concatenate at least
+two ordered, non-cyclic protein segments into one output chain. Segments may
+come from a request-local template or be template-free fixed or designed
+proteins. Template-free segments omit `chain_ids` because the parent owns the
+surviving output chain ID.
+
+```yaml
+type: generic
+num_proteins: 12
+templates: []
+entities:
+  - type: fusion_protein
+    output_chain_id: A
+    segments:
+      - type: no_template
+        entity:
+          type: protein
+          value: "MKTAYIAKQRQ"
+      - type: no_template
+        entity:
+          type: designed_protein
+          value: "5..10"
+```
+
+Fusion results remain `type: generic` and contain only the parent
+`output_chain_id` in the returned fused entity. A generic request still needs
+at least one designed entity or motif somewhere in the request; fixed-only
+requests are rejected.
 
 ## Legacy request (migration only)
 

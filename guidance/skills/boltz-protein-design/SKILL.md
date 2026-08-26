@@ -1,6 +1,6 @@
 ---
 name: boltz-protein-design
-description: Design new protein binders with Boltz. Use when generating protein, peptide, antibody, nanobody, or custom binder candidates for a target. Not for screening existing proteins or small molecules.
+description: Design new protein binders, generic proteins, or composite proteins with Boltz. Use when generating protein, peptide, antibody, nanobody, or custom candidates. Not for screening existing proteins or small molecules.
 ---
 
 ## Workflow
@@ -9,7 +9,7 @@ If `boltz-api` is missing from `PATH`, use `boltz-cli-setup` for install/update 
 If a command reports missing or expired authentication, use `boltz-cli-setup` to start `boltz-api auth login --device-code` before retrying; do not ask permission first.
 If the agent host sandbox blocks `boltz-api` install/auth/API calls, use `boltz-cli-setup` to request the host sandbox bypass/escalation needed for user-wide CLI install, browser login, credential storage, temp files, or API access before retrying.
 
-Use this skill when the user wants de novo protein / peptide / antibody / nanobody binders.
+Use this skill when the user wants de novo protein / peptide / antibody / nanobody binders, generic proteins, or composite proteins.
 
 1. **Decide on target exploration first (new targets).** For a new target where the user hasn't already fixed the binding site and crop, your first action — before authoring a payload, normalizing the target, or running `estimate-cost` — is to raise the choice between a target-exploration pass and designing directly, with a **recommendation** for this target:
    - Unknown site, or a multi-domain / large target → recommend exploration (it scouts different input configurations for generation, ≈50 designs each, and finds the best before a full run).
@@ -21,15 +21,15 @@ Use this skill when the user wants de novo protein / peptide / antibody / nanobo
 
    **Do not mention a campaign size or tier here** — not even folded into this opening approach question. The full-run size is settled later, after the scouting runs pick a winner (its yield informs the tier), so don't ask it up front when exploration is on the table. If the user opts into exploration — or has already said they want to explore / let the design find its own epitope — read [references/target-exploration.md](references/target-exploration.md), follow it, then resume at step 8 with the chosen framing and recommended `num_proteins`. If they want to design directly, continue below.
 2. Choose the request mode. New requests use the top-level `type: binder` or `type: generic` discriminator; do not author the deprecated `binder_specification` shape for a new integration. Use `binder` for target-binding designs and `generic` for designs without a binding target.
-3. For `type: binder`, choose the `binder` definition: an untagged custom specification for one binder, `uniformly_sampled` to sample 1–50 specifications, or a `boltz_curated` family. For `type: generic`, define at least one designed entity and any requested bonds. See [references/api.md](references/api.md) for exact shapes.
+3. For `type: binder`, choose the `binder` definition: an untagged custom specification for one binder, `uniformly_sampled` to sample 1–50 specifications, or a `boltz_curated` family. For `type: generic`, define at least one designed entity and any requested bonds; use a `fusion_protein` entity when ordered protein segments should become one output chain. See [references/api.md](references/api.md) for exact shapes.
 4. For antibody or nanobody requests, ask before authoring the payload: "I recommend Boltz's curated antibody/nanobody scaffolds for this. Do you want the curated default, or do you have custom scaffold structures/CDR motifs to use?" If the user picks curated, use a `binder` definition with `type: boltz_curated`; if they want custom scaffold control, use an untagged `binder` custom specification with `modality` and `entities`.
-5. In binder mode, normalize the target (`target.entities`) and binder entities (`binder.entities`) using `from_template` or `no_template` as appropriate. In generic mode, put designed entities in the top-level `entities`; use `templates`, `global_design_filters`, `design_motifs`, and `bonds` only when needed.
+5. In binder mode, normalize the target (`target.entities`) and binder entities (`binder.entities`) using `from_template` or `no_template` as appropriate. In generic mode, put designed entities in the top-level `entities`; use `templates`, `global_design_filters`, `design_motifs`, and `bonds` only when needed. A generic `fusion_protein` concatenates at least two non-cyclic protein segments into its `output_chain_id`.
 6. Pick `num_proteins` — see [Run sizing](#run-sizing). Valid range is **10 to 1,000,000** (server rejects outside it); **10** is the hard floor but it is a test size, not a campaign. When the user has not given a count, propose a campaign tier (default **50,000**), not the floor.
 7. Supported optional features include rules such as excluded amino acids, excluded sequence motifs with `X` wildcards, and max hydrophobic fraction. Add `rules` only on request; read [references/api.md](references/api.md) for exact shapes and examples.
 8. Author the payload YAML or JSON, then run `estimate-cost` and apply the **spending gate** (Always Do This) before `start`. (Cost model — tiered by total complex length, `estimate-cost` is the only source: see [`## Cost`](references/api.md) in api.md.)
 9. `start` to submit. Capture the ID.
 10. Launch `download-results` with the agent runtime's background/non-blocking command facility. In Claude Code, use Bash with `run_in_background: true`. In Codex, run `download-results` as a foreground shell command with `yield_time_ms: 1000`; if Codex returns a `session_id`, keep it for optional same-thread polling, but treat `download-status` plus the run directory as the durable source of truth. In Codex app/desktop runtimes that expose same-thread heartbeat automations, create a heartbeat that checks `download-status` periodically and posts a concise completion or failure update when the download reaches a terminal state. After launching the downloader, always report the job ID, run name, and output directory. Include the next check cadence if the heartbeat was created; otherwise include the `download-status` command.
-11. Rank from `<output-root>/<run-name>/results/index.jsonl` by `binding_confidence` descending. Use `iptm` and `min_interaction_pae` as tiebreakers. `optimization_score` is not emitted for this endpoint. Read [references/results.md](references/results.md) for output layout and metric details.
+11. For binder runs, rank from `<output-root>/<run-name>/results/index.jsonl` by `binding_confidence` descending, using `iptm` and `min_interaction_pae` as tiebreakers. Generic runs omit binding-specific metrics; rank them by `structure_confidence` and inspect the secondary-structure fractions. `optimization_score` is not emitted for this endpoint. Read [references/results.md](references/results.md) for output layout and metric details.
 
 ## Run sizing
 
@@ -68,7 +68,7 @@ boltz-api download-results \
   --poll-interval-seconds 60
 ```
 
-New payload keys are `type`, `num_proteins`, and `templates`, plus `target` and `binder` for binder mode or `entities` and optional `bonds` for generic mode. These are API body field names. The legacy `target` + `binder_specification` body is still accepted for migration, but new requests must use the type-discriminated shape in [references/api.md](references/api.md).
+New payload keys are `type`, `num_proteins`, and `templates`, plus `target` and `binder` for binder mode or `entities` and optional `bonds` for generic mode. Generic entities may include `fusion_protein` segments. These are API body field names. The legacy `target` + `binder_specification` body is still accepted for migration, but new requests must use the type-discriminated shape in [references/api.md](references/api.md).
 
 ## Always Do This
 

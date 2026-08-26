@@ -1,6 +1,6 @@
 # Protein Design Results
 
-Read this after `download-results` completes, when ranking designed protein-family binders or summarizing output files.
+Read this after `download-results` completes, when ranking designed protein results or summarizing output files.
 
 ## Local Layout
 
@@ -15,7 +15,7 @@ Under `<output-root>/<run-name>/`:
 
 ## Ranking
 
-Rank by `binding_confidence` descending. Use `iptm` (higher is better) and `min_interaction_pae` (lower is better) as tiebreakers.
+For binder runs, rank by `binding_confidence` descending. Use `iptm` (higher is better) and `min_interaction_pae` (lower is better) as tiebreakers. Generic runs omit binding-specific metrics; rank them by `structure_confidence` and inspect the secondary-structure fractions. Fusion results contain only the parent `output_chain_id` in the fused entity.
 
 `optimization_score` is not emitted for `protein:design`; do not sort by it.
 
