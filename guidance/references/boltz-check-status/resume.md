@@ -4,15 +4,18 @@ Read this when the user wants to resume a dropped session, recover results by jo
 
 ## Job ID Prefixes
 
-Use these observed prefixes to route `retrieve` calls. If a prefix is unfamiliar, fall back to probing all five resources.
+Use these observed prefixes to route `retrieve` calls. If a prefix is unfamiliar, fall back to probing all eight resources.
 
-- `sab_pred_*` -> `prediction` (`predictions:structure-and-binding`)
-- `prot_des_*` -> `protein_design_ppi`
-- `prot_scr_*` -> `protein_library_screen_ppi`
-- `sm_des_*` -> `boltz_sm_design`
-- `sm_scr_*` -> `boltz_sm_screen`
+- `sab_pred_*` -> `predictions:structure-and-binding` (legacy `pred_*` IDs are still supported)
+- `adme_pred_*` -> `predictions:adme` (`list` / `retrieve` / `download-results`; inline output only, no archive; results in `output.molecules[]`)
+- `prot_des_*` -> `protein:design`
+- `prot_scr_*` -> `protein:library-screen`
+- `prot_seq_redes_*` -> `protein:sequence-redesign` (`list` / `retrieve` / `list-results`; no `download-results`)
+- `sm_des_*` -> `small-molecule:design`
+- `sm_scr_*` -> `small-molecule:library-screen`
+- `sm_exp_*` -> `small-molecule:explore` (`retrieve` / `list-results`; no `list` or `download-results`)
 
-This mapping is observational, not a guaranteed API contract.
+The right-hand side is the CLI resource you pass to `retrieve` — this table matches the one in `api.md`. Prefixes are verified against the live API but are not a guaranteed contract; if one is unfamiliar, probe all eight resources.
 
 ## Local Downloader State
 

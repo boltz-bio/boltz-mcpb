@@ -1,8 +1,8 @@
 # Target Exploration — pre-design scouting
 
 Read this when the user **opts into** the target-exploration pass from
-`boltz-protein-design`. It scouts a few cheap framings of the target before
-committing compute to a full design run, then hands back a chosen framing
+`boltz-protein-design`. It selects different generations configs with respect to the target before
+committing compute to a full design run, then hands back a chosen configuration
 (crop + optional binding site) and a recommended `num_proteins` for the full
 run. If the user already knows their target, site, and crop, do **not** run this
 — go straight back to authoring the full payload.
@@ -26,15 +26,20 @@ what kind of binder you design.
 
 ## Mental model
 
-The exploration procedure is best understood as a set of **axes** that frame the
-same target different ways. Each axis changes which target residues the model sees
-and whether the binding site is specified. Don't take the full Cartesian *product*
-of the axes, and for a **multi-valued** axis like crop radius sample only a
-couple of values (not all five) — that product/radius blow-up is the thing to
-guard against. Every **categorical** axis should be *covered*, not sampled:
-scout **all** the domains (not a favourite few), and both with and without the
-site specified. Trim termini once, scout each framing cheaply at 50 designs, and let
-the yield pick the winner.
+The exploration procedure is best thought of a set of **axes** that can be varied in the
+input configuration to the generation endpoint that modify the underlying models view of the target.
+Each axis changes which target residues the model sees and whether or not we condition on a specified binding site.
+This process should be conducted as an interactive discussion with the user, who may have their own domain knowledge or
+preferences about how to design binders against a target.
+
+Don't start by immediately using the full Cartesian *product* of the axes, as this will cause a combinatorial
+blowup of screening runs. For **categorial** axes, the entire axis should be explored
+in one set of exploration runs, for example, every domain should be designed against unless
+the user actively modifies this. For **multi-valued** axes like crop radius, only select a couple of values
+(not all five) to avoid combinatorial blowup, unless the user actively requests it. Before any exploration, the
+irrelevant residues at the termini should be trimmed. Scouting runs ask for 50 designs, and the
+best configuration is ultimately selected for the full size design run.
+
 
 The axes:
 
@@ -49,7 +54,7 @@ The axes:
 
 Why bother: unmodeled terminal residues add floppy overhang that hurts designs;
 binders frequently dock off-site and crop/epitope indices are easy to misread,
-so testing a few framings cheaply reveals which one yields good binders before
+so testing a different configurations cheaply reveals which one yields good binders before
 spending on a large run.
 
 ## Bundled scripts and dependency probe
@@ -88,7 +93,7 @@ this sanity check is your guardrail.
 The user has engaged exploration, so first briefly establish **what they want the
 binder to do** — block a specific interaction/function, serve as a research or
 diagnostic tool, or just be any tractable binder against the target. This is a
-quick discussion (they know their biology), and it shapes the whole pass: which
+quick discussion (they may have domain knowledge about the target or other priors), and it shapes the whole pass: which
 sites/domains are worth scouting, whether to specify a site, and how to weigh the
 winner later (a highly designable but off-purpose site may not be what they
 want). Carry that goal through to the
@@ -110,14 +115,14 @@ API index, but reading the CIF directly is fine.
 
 ## Step 2 — choose which axes to scout
 
-Cover each axis that applies — don't pre-judge which framing will win. The only
+Cover each axis that applies — don't pre-judge which configuration will win. The only
 places to hold back: sample ~2 crop radii rather than all five, and don't
 multiply axes together into the full cross-product. Otherwise explore each axis
-fully — e.g. **every** domain, and with/without the site. Sensible defaults:
+fully — e.g. **every** domain, and with/without the site. This is an interactive discussion with the user. Sensible defaults:
 
 1. **Baseline** — full target, termini trimmed, design spec as given.
 2. **Disorder cutout** — if the target has internal disordered/loopy regions,
-   add a framing that crops them away:
+   add a configuration that crops them away:
    ```bash
    # predicted target (pLDDT in the B-factor column) — default mode:
    python3 scripts/detect_disorder.py <target.cif> --chain A --min-loop 10
@@ -215,10 +220,10 @@ too. Never run scouts one at a time.
 
 ## Step 4 — pick the winning config
 
-Once the scout runs finish, score each config and choose the framing to scale
+Once the scout runs finish, score each config and choose the configuration to scale
 up. **The selection metric is the maximum `binding_confidence`** across the 50
-designs in that config — the best single design a framing can produce is the
-signal that the framing is promising.
+designs in that config — the best single design a configuration can produce is the
+signal that the configuration is promising.
 
 ```bash
 python3 scripts/analyze_results.py <scout-run-dir>      # one per config
@@ -227,23 +232,22 @@ python3 scripts/analyze_results.py <scout-run-dir>      # one per config
 For each config it prints: **max binding_confidence**, the 10th-highest
 binding_confidence, and the fraction of designs with bc > 0.01 and > 0.05.
 Compare configs by max bc; report the others as supporting context. The winning
-config's crop (and site, if it had one) becomes the framing for the full run.
+config's crop (and site, if it had one) becomes the config for the full run.
 
-`binding_confidence` is a **soft, uncalibrated** signal, not a pass/fail score —
+`binding_confidence` is a **soft** signal, not a pass/fail score —
 there is no cutoff to gate on. Read it qualitatively and bring the judgement to
-the user. A near-zero max bc is a genuinely weak framing: strongly steer toward
-stopping, changing the site or modality, exploring further, or pulling in domain
-knowledge the user has. A clearly strong one is a good candidate to scale. In
-between is a real judgement call — often worth a shot, especially if it's the
-best framing you found and the site fits what the user wants — so lay out the
+the user. A near-zero max bc is a weak configuration: iterate with the user or pull in more domain
+knowledge the user has. A clearly strong score is a good candidate to scale. In
+between is a real judgement call requiring user input — often worth a shot, especially if it's the
+best configuration you found and the site fits what the user wants — so lay out the
 trade-off rather than deciding for them.
 
-Compare configs **relative** to each other (the best framing vs. the rest), not
+Compare configs **relative** to each other (the best configuration vs. the rest), not
 against any fixed mark. Whatever the numbers, scaling is a collaborative call:
 recommend a direction and let the user steer.
 
-Max binding_confidence ranks by **designability** — where the model most easily
-gets a binder to stick — which may not be where the user *wants* one to stick.
+Max binding_confidence is purely related to binding: where the model most easily
+gets a binder to stick, may not be where the user *wants* one to stick.
 Which site matters depends on **why they want a binder** (to block a specific
 interaction/function, a research or diagnostic tool, or just any tractable
 binder against the target). When configs hit different sites and the most

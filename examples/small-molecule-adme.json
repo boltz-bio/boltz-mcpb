@@ -1,0 +1,18 @@
+{
+  "tool": "boltz_small_molecule_adme",
+  "arguments": {
+    "run_name": "adme-check-v1",
+    "payload": {
+      "molecules": [
+        {
+          "id": "aspirin",
+          "smiles": "CC(=O)OC1=CC=CC=C1C(=O)O"
+        },
+        {
+          "id": "caffeine",
+          "smiles": "Cn1cnc2c1c(=O)n(C)c(=O)n2C"
+        }
+      ]
+    }
+  }
+}

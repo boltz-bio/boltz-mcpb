@@ -11,25 +11,128 @@ boltz-api protein:design start --idempotency-key "<run-name>" --input @yaml:///a
 
 In permission-gated agents, keep the submit command as a top-level `boltz-api ... start` invocation. Read the printed job ID from stdout and paste it into the later `download-results` command.
 
-Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear inside `--input`, the top-level flags win. Direct object flags still work as overrides, such as `--target @yaml:///absolute/path/target.yaml` or `--binder-specification @json:///absolute/path/binder.json`. Piped YAML / JSON on stdin remains supported when you need it, but the body must use API field names.
+Keep `--idempotency-key` and `--workspace-id` top-level; if they also appear inside `--input`, the top-level flags win. For a type-discriminated request, keep the complete mode in `--input`; the legacy direct object flags (`--target` and `--binder-specification`) remain available for migration. Piped YAML / JSON on stdin remains supported when you need it, but the body must use API field names.
 
 ## Contents
 
-- [Top-level request](#top-level-request)
+- [Type-discriminated request](#type-discriminated-request)
+- [Legacy request (migration only)](#legacy-request-migration-only)
 - [`num_proteins` minimum](#num_proteins-minimum)
 - [Cost](#cost)
 - [`binder_specification` — variant 1: `boltz_curated`](#binder_specification--variant-1-boltz_curated)
 - [`binder_specification` — variant 2: `structure_template`](#binder_specification--variant-2-structure_template)
 - [`binder_specification` — variant 3: `no_template`](#binder_specification--variant-3-no_template)
+- [`binder_specification` — variant 4: `uniformly_sampled_specifications`](#binder_specification--variant-4-uniformly_sampled_specifications)
 - [Sequence DSL (`designed_protein.value`)](#sequence-dsl-designed_proteinvalue)
 - [`rules`](#rules)
 - [`target` — variant 1: `structure_template`](#target--variant-1-structure_template)
 - [`target` — variant 2: `no_template`](#target--variant-2-no_template)
 - [`bonds` and `constraints` shapes](#bonds-and-constraints-shapes)
+- [Fusion proteins](#fusion-proteins)
 - [Outputs (after `download-results`)](#outputs-after-download-results)
 - [Escape hatch](#escape-hatch)
 
-## Top-level request
+## Type-discriminated request
+
+New requests must use one of the two top-level modes. The CLI `--input` is the
+API body (it is not an HTTP envelope).
+
+### Binder mode
+
+Use `type: binder` for a target-binding design. `target.entities` contains
+fixed target entities, while `binder` is either a single custom specification,
+a curated Boltz family, or a uniformly sampled set of specifications.
+
+```yaml
+type: binder
+num_proteins: 10
+templates:
+  - id: target
+    type: url
+    url: "https://example.com/target.cif"
+target:
+  entities:
+    - type: from_template
+      template_id: target
+      chain_id: A
+      crop_residues: all
+binder:
+  modality: nanobody             # peptide | antibody | nanobody | custom_protein
+  entities:
+    - type: no_template
+      entity:
+        type: designed_protein
+        chain_ids: [B]
+        value: "20"
+```
+
+For a Boltz-maintained antibody or nanobody family, use
+`binder: {type: boltz_curated, binder: boltz_nanobody}` (or
+`boltz_antibody`) instead of a custom specification. To compare multiple
+definitions in one run, use `type: uniformly_sampled` with 1–50
+`specifications`; each entry is an untagged custom specification or a curated
+family.
+
+### Generic mode
+
+Use `type: generic` when there is no binding target. It requires at least one
+designed entity and can include top-level `bonds`.
+
+```yaml
+type: generic
+num_proteins: 10
+templates: []
+entities:
+  - type: no_template
+    entity:
+      type: designed_protein
+      chain_ids: [A]
+      value: "20"
+```
+
+Both modes also accept optional `global_design_filters`. Template entities use
+`type: from_template` and reference a request-local template by `template_id`;
+template-free entities use `type: no_template`. Omit `global_design_filters` to
+keep the default `excluded_amino_acids: ["C"]`; pass `[]` to disable it.
+`design_motifs[].filters` can add constraints to individual motifs. See the
+sections below for entity, motif, bond, and sequence details.
+
+#### Fusion proteins
+
+Within a generic request, use `type: fusion_protein` to concatenate at least
+two ordered, non-cyclic protein segments into one output chain. Segments may
+come from a request-local template or be template-free fixed or designed
+proteins. Template-free segments omit `chain_ids` because the parent owns the
+surviving output chain ID.
+
+```yaml
+type: generic
+num_proteins: 12
+templates: []
+entities:
+  - type: fusion_protein
+    output_chain_id: A
+    segments:
+      - type: no_template
+        entity:
+          type: protein
+          value: "MKTAYIAKQRQ"
+      - type: no_template
+        entity:
+          type: designed_protein
+          value: "5..10"
+```
+
+Fusion results remain `type: generic` and contain only the parent
+`output_chain_id` in the returned fused entity. A generic request still needs
+at least one designed entity or motif somewhere in the request; fixed-only
+requests are rejected.
+
+## Legacy request (migration only)
+
+The following `target` + `binder_specification` body remains accepted for
+migration, but it is deprecated. New integrations must use the
+type-discriminated request above.
 
 ```yaml
 # payload.yaml
@@ -52,11 +155,11 @@ binder_specification:
     max_hydrophobic_fraction: 0.5
 ```
 
-Top-level fields:
+Legacy top-level fields:
 
-- `num_proteins` (required) — number to generate. **Minimum 10** (server rejects lower).
+- `num_proteins` (required) — number to generate. **Must be between 10 and 1,000,000** (server rejects outside this range).
 - `target` (required) — discriminated union: `structure_template` or `no_template`. Identical shape to protein-screen.
-- `binder_specification` (required) — discriminated union: `boltz_curated`, `structure_template`, or `no_template`. See below.
+- `binder_specification` (required) — discriminated union: `boltz_curated`, `structure_template`, `no_template`, or `uniformly_sampled_specifications`. See below.
 
 Also passed as separate `start` flags:
 
@@ -65,11 +168,11 @@ Also passed as separate `start` flags:
 
 ## `num_proteins` minimum
 
-Server rejects `num_proteins < 10` with `VALIDATION_ERROR`. Validate client-side before submitting.
+Server rejects `num_proteins < 10` or `> 1000000` with `VALIDATION_ERROR`. Validate client-side before submitting.
 
 ## Cost
 
-Cost is tiered by **total complex length** (target crop + binder), not flat per design, and both the target crop and the designed binder count toward the length — so the tier is easy to misjudge. `estimate-cost` returns `breakdown.{application, cost_per_unit_usd, num_units}` (where `num_units` may exceed `num_proteins` as the combined length crosses tiers) and is the **only** source to use: quote `estimated_cost_usd` from it and never compute, estimate, or state a cost yourself.
+Cost is tiered by **total complex length** (target crop + binder), not flat per design, and both the target crop and the designed binder count toward the length — so the tier is easy to misjudge. `estimate-cost` returns `breakdown.{application, cost_per_unit_usd, num_units}` — `num_units` equals `num_proteins`, and the complex-length effect rides in `cost_per_unit_usd` (small targets cost less per design, large ones materially more). It is the **only** source to use: quote `estimated_cost_usd` from it and never compute, estimate, or state a cost yourself.
 
 ## `binder_specification` — variant 1: `boltz_curated`
 
@@ -197,6 +300,25 @@ Allowed entity types in `binder_specification.entities` (for `no_template`):
 - `designed_protein` — the sequence DSL target
 - `protein`, `rna`, `dna` — fixed partners
 - `ligand_smiles`, `ligand_ccd` — fixed cofactors
+- `glycan` — fixed glycan graph
+
+## `binder_specification` — variant 4: `uniformly_sampled_specifications`
+
+Use this wrapper when one run should compare multiple concrete binder definitions. The service samples one entry per generation; across a larger run this gives roughly equal representation. Provide 1–50 entries in `binder_specifications`. Each entry must be a concrete `boltz_curated`, `structure_template`, or `no_template` specification — uniform samplers cannot be nested.
+
+```yaml
+binder_specification:
+  type: uniformly_sampled_specifications
+  binder_specifications:
+    - type: no_template
+      modality: custom_protein
+      entities:
+        - type: designed_protein
+          chain_ids: [B]
+          value: "20"
+    - type: boltz_curated
+      binder: boltz_nanobody
+```
 
 ## Sequence DSL (`designed_protein.value`)
 
@@ -213,7 +335,7 @@ Examples:
 
 ## `rules`
 
-Optional, applies to all `binder_specification` variants. Any of:
+Optional, applies to the three concrete `binder_specification` variants. For `uniformly_sampled_specifications`, put `rules` on each entry. Any of:
 
 - `excluded_amino_acids: [<one-letter codes>]` — never emit these residues in designed positions.
 - `excluded_sequence_motifs: [<motif strings>]` — reject designs containing these patterns. Use `X` as a single-position wildcard (e.g. `"XPX"`).
@@ -233,6 +355,7 @@ target:
       crop_residues: all              # or [int, ...]
       epitope_residues: [42, 43, 44]  # optional; subset of crop_residues
       flexible_residues: [40, 41, 42] # optional; subset of crop_residues
+      non_binding_residues: [50, 51]  # optional; subset of crop_residues, must NOT overlap epitope_residues
 ```
 
 Same semantics as protein-screen: `epitope_residues` / `flexible_residues` must be subsets of `crop_residues`, all 0-based.
@@ -248,12 +371,14 @@ target:
       value: "MKTAYIAKQRQISFVKSHFSRQ"
   epitope_residues:
     A: [42, 43, 44]                   # optional; 0-based
+  non_binding_residues:
+    A: [50, 51]                       # optional; 0-based; must NOT overlap epitope_residues
   epitope_ligand_chains: [L]          # optional
   bonds: []                           # optional
   constraints: []                     # optional
 ```
 
-Optional fields: `epitope_residues`, `epitope_ligand_chains`, `bonds`, `constraints`.
+Optional fields: `epitope_residues`, `non_binding_residues` (residues where binder contact is discouraged — 0-based, within `crop_residues`, must not overlap `epitope_residues`), `epitope_ligand_chains`, `bonds`, `constraints`.
 
 ## `bonds` and `constraints` shapes
 
@@ -268,7 +393,7 @@ Under `<output-root>/<run-name>/`:
 - `results/index.jsonl` — one generated design per line, copied from list-results metadata plus local artifact paths
 - `results/<pres_*>/metadata.json` — per-result metadata copied from the list-results record
 - `results/<pres_*>/archive.tar.gz` — one dir per generated design
-- `results/<pres_*>/files/result/{metrics.json, predicted_structure.cif, pae.npz}`
+- `results/<pres_*>/files/result/{metrics.json, <result-id>_predicted.cif, pae.npz}` (the CIF is named `<pres_*>_predicted.cif` — prefer the `paths.structure` field from `index.jsonl` over hard-coding the filename)
 
 Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadata.json`, and the `list-results` stream):
 
@@ -280,6 +405,7 @@ Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadat
 - `metrics.min_interaction_pae` (lower is better)
 - `metrics.helix_fraction`, `metrics.sheet_fraction`, `metrics.loop_fraction`
 - `artifacts.structure.url`, `artifacts.archive.url` (presigned, short-lived)
+- `warnings` — optional array of `{code, message}` quality flags (e.g. `low_confidence`, `unusual_geometry`); empty or absent on clean results. Surface them when presenting top designs.
 
 `optimization_score` is **not emitted** for `protein:design`. Sorting by it yields an empty list.
 

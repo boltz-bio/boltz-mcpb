@@ -7,7 +7,7 @@ const examplesDir = new URL("../examples/", import.meta.url);
 
 test("examples use canonical payload shapes", async () => {
   const files = (await readdir(examplesDir)).filter((file) => file.endsWith(".json"));
-  assert.equal(files.length, 5);
+  assert.equal(files.length, 6);
   for (const file of files) {
     const example = JSON.parse(await readFile(new URL(file, examplesDir), "utf8"));
     assert.equal(typeof example.tool, "string", file);
@@ -23,6 +23,11 @@ function validatePayload(tool, payload, file) {
     assertProteinEntityList(payload.entities, file);
     assert.equal(payload.binding.type, "ligand_protein_binding", file);
     assert.equal(typeof payload.binding.binder_chain_id, "string", file);
+    return;
+  }
+  if (tool === "boltz_small_molecule_adme") {
+    assertMoleculeList(payload.molecules, file);
+    assert.equal(payload.molecules.length <= 128, true, file);
     return;
   }
   if (tool === "boltz_small_molecule_screen") {

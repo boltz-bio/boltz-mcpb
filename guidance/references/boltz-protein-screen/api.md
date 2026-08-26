@@ -90,8 +90,9 @@ Supported entity types inside `proteins[].entities`:
 - `dna`
 - `ligand_smiles`
 - `ligand_ccd`
+- `glycan`
 
-Entity fields: `type`, `value`, `chain_ids`, `modifications` (optional), `cyclic` (optional bool).
+Non-glycan entity fields are `type`, `value`, `chain_ids`, `modifications` (optional), and `cyclic` (optional bool). Glycan entities use `type`, `chain_ids`, `residues`, and `bonds` to describe a graph of CCD monosaccharide residues.
 
 Each `proteins[]` entry may also include an optional client-side `id`. The server echoes it as `external_id` on the corresponding result; use it to map ranked hits back to FASTA records, CSV rows, or library IDs.
 
@@ -146,6 +147,7 @@ A:
   crop_residues: all                  # or [int, ...]
   epitope_residues: [int, ...]        # optional; must be subset of crop_residues
   flexible_residues: [int, ...]       # optional; must be subset of crop_residues
+  non_binding_residues: [int, ...]    # optional; subset of crop_residues, must NOT overlap epitope_residues
 ```
 
 Ligand chain:
@@ -159,7 +161,7 @@ All residue indices are 0-based.
 
 ## `target` — variant 2: `no_template`
 
-Use when the user has only sequences.
+Use when the user has only sequences or explicit glycan graphs.
 
 ```yaml
 target:
@@ -179,6 +181,7 @@ target:
 Optional fields:
 
 - `epitope_residues` — `{chain_id: [0-based residue_index, ...]}`. Hints the binding epitope.
+- `non_binding_residues` — `{chain_id: [0-based residue_index, ...]}`. Residues where binder contact is discouraged; must **not** overlap `epitope_residues` on the same chain.
 - `epitope_ligand_chains` — list of ligand chain IDs if the epitope includes a ligand.
 - `bonds`, `constraints` — same shapes as the structure-and-binding skill (see below).
 
@@ -232,9 +235,11 @@ constraints:
 
 Token variants: `polymer_contact {chain_id, residue_index}` or `ligand_contact {chain_id, atom_name}`.
 
+**Atom-level ligand references (bonds and `ligand_contact`) support CCD atom names and explicitly atom-mapped SMILES atoms.** For a SMILES ligand, label atoms with numeric atom-map notation such as `[C:1]` and reference that atom as `C1`.
+
 ## Cost
 
-Cost scales with total complex length (target + candidate). Typically ≈$0.025 per candidate for small complexes, more for larger ones. `estimate-cost` on the full payload gives the authoritative quote — do not hardcode a flat per-candidate rate.
+Cost is tiered by **total complex length** (target + candidate), so there is no flat per-candidate rate to cite — it changes with size. Run `estimate-cost` on the full payload and quote only the `estimated_cost_usd` it returns; do not state or estimate a dollar figure yourself.
 
 ## Outputs (after `download-results`)
 
@@ -245,7 +250,7 @@ Under `<output-root>/<run-name>/`:
 - `results/index.jsonl` — one scored candidate per line, copied from list-results metadata plus local artifact paths
 - `results/<pres_*>/metadata.json` — per-result metadata copied from the list-results record
 - `results/<pres_*>/archive.tar.gz` — one dir per scored candidate
-- `results/<pres_*>/files/result/{metrics.json, predicted_structure.cif, pae.npz}`
+- `results/<pres_*>/files/result/{metrics.json, <result-id>_predicted.cif, pae.npz}` (the CIF is named `<pres_*>_predicted.cif` — prefer the `paths.structure` field from `index.jsonl` over hard-coding the filename)
 
 Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadata.json`, and the `list-results` stream):
 
@@ -258,6 +263,7 @@ Per-result fields (available in `results/index.jsonl`, `results/<pres_*>/metadat
 - `metrics.min_interaction_pae` (lower is better)
 - `metrics.helix_fraction`, `metrics.sheet_fraction`, `metrics.loop_fraction`
 - `artifacts.structure.url`, `artifacts.archive.url` (presigned, short-lived)
+- `warnings` — optional array of `{code, message}` quality flags (e.g. `low_confidence`, `unusual_geometry`); empty or absent on clean results. Surface them when presenting top hits.
 
 `optimization_score` is **not emitted** for `protein:library-screen`. Sorting by it returns an empty list.
 
